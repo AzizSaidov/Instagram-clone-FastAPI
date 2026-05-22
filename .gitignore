@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+
+.venv/
+
+*.db
+
+.env
+
+.vscode/
+.idea/
+
+*.log
+
+tz.md
