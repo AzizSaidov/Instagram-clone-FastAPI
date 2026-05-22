@@ -1,5 +1,7 @@
+import os
 from datetime import datetime, timedelta, timezone
 
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
 from jose import JWTError, jwt
@@ -10,9 +12,16 @@ from database import get_db
 from users.models import User
 
 
-SECRET_KEY = "CHANGE_THIS_SECRET_KEY"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 300
+load_dotenv()
+
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "300"))
+
+
+if SECRET_KEY is None:
+    raise RuntimeError("SECRET_KEY is not set")
 
 
 pwd_context = CryptContext(
