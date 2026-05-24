@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from users.auth import get_current_user
 from users.models import User
-from users.schemas import LoginSchema, TokenSchema, UserCreate, UserMeResponse, UserRegisterResponse
-from users.views import get_me, login_user, register_user
+from users.schemas import AccessTokenSchema, ChangePasswordSchema, LoginSchema, RefreshTokenSchema, TokenSchema, UserCreate, UserRegisterResponse
+from users.views import change_password, login_user, refresh_access_token, register_user
 
 
 users_router = APIRouter(prefix="/users", tags=["Users"])
@@ -21,6 +21,11 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
     return login_user(data, db)
 
 
-@users_router.get("/me/", response_model=UserMeResponse)
-def me(current_user: User = Depends(get_current_user)):
-    return get_me(current_user)
+@users_router.post("/refresh/", response_model=AccessTokenSchema)
+def refresh_token(data: RefreshTokenSchema, db: Session = Depends(get_db)):
+    return refresh_access_token(data, db)
+
+
+@users_router.put("/change-password/")
+def update_password(data: ChangePasswordSchema, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return change_password(data, db, current_user.id)

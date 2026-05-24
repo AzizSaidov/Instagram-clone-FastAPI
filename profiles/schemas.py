@@ -1,9 +1,13 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from posts.schemas import PostRead
+from reels.schemas import ReelRead
 
 
 class ProfileRead(BaseModel):
     id: int
-    user_id: int
     username: str
     full_name: str | None
     bio: str | None
@@ -76,5 +80,69 @@ class ProfileUpdate(BaseModel):
         return value
 
 
-class ProfileResponse(BaseModel):
-    profile: ProfileRead
+class MyProfileRead(BaseModel):
+    id: int
+    user_id: int
+    username: str
+    full_name: str | None
+    bio: str | None
+    avatar_url: str | None
+    is_private: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfileRead(BaseModel):
+    id: int
+    phone_number: str
+    created_at: datetime
+    profile: MyProfileRead
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MyProfileResponse(BaseModel):
+    user: UserProfileRead
+
+
+class ProfilePageRead(BaseModel):
+    id: int
+    username: str
+    full_name: str | None
+    bio: str | None
+    avatar_url: str | None
+    is_private: bool
+    posts_count: int
+    reels_count: int
+    followers_count: int
+    following_count: int
+
+
+class ProfilePagePagination(BaseModel):
+    limit: int
+    offset: int
+    has_next: bool
+
+
+class ProfilePageResponse(BaseModel):
+    profile: ProfilePageRead
+    posts: list[PostRead]
+    reels: list[ReelRead]
+    pagination: ProfilePagePagination
+
+
+class ProfileSearchRead(BaseModel):
+    id: int
+    username: str
+    full_name: str | None
+    avatar_url: str | None
+    is_private: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProfileSearchResponse(BaseModel):
+    users: list[ProfileSearchRead]
+    limit: int
+    offset: int
+    has_next: bool

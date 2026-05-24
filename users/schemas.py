@@ -94,8 +94,45 @@ class UserRegisterResponse(BaseModel):
 
 class TokenSchema(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
-class UserMeResponse(BaseModel):
-    user: UserRead
+class RefreshTokenSchema(BaseModel):
+    refresh_token: str
+
+    @field_validator("refresh_token")
+    @classmethod
+    def validate_refresh_token(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Refresh token is required")
+
+        return value
+
+
+class AccessTokenSchema(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class ChangePasswordSchema(BaseModel):
+    old_password: str
+    new_password: str
+
+    @field_validator("old_password")
+    @classmethod
+    def validate_old_password(cls, value: str):
+        if not value:
+            raise ValueError("Old password is required")
+
+        return value
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str):
+        if len(value) < 8:
+            raise ValueError("New password must be at least 8 characters")
+
+        return value
