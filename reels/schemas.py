@@ -63,6 +63,14 @@ class ReelWatchUpdate(BaseModel):
         return value
 
 
+class ReelUserRead(BaseModel):
+    id: int
+    username: str
+    avatar_url: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ReelRead(BaseModel):
     id: int
     user_id: int
@@ -71,6 +79,7 @@ class ReelRead(BaseModel):
     hashtag: str | None
     views_count: int
     created_at: datetime
+    user: ReelUserRead
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -34,6 +34,14 @@ class StoryCreate(BaseModel):
         return self
 
 
+class StoryUserRead(BaseModel):
+    id: int
+    username: str
+    avatar_url: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class StoryRead(BaseModel):
     id: int
     user_id: int
@@ -42,6 +50,7 @@ class StoryRead(BaseModel):
     expires_at: datetime
     views_count: int
     created_at: datetime
+    user: StoryUserRead
 
     model_config = ConfigDict(from_attributes=True)
 

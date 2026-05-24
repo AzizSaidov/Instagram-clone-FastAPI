@@ -15,16 +15,22 @@ __pycache__/
 media/*
 !media/.gitkeep
 !media/avatars/
+media/avatars/*
 !media/avatars/.gitkeep
 !media/posts/
+media/posts/*
 !media/posts/.gitkeep
 !media/reels/
+media/reels/*
 !media/reels/.gitkeep
 !media/stories/
+media/stories/*
 !media/stories/.gitkeep
 !media/direct_messages/
+media/direct_messages/*
 !media/direct_messages/.gitkeep
 !media/group_messages/
+media/group_messages/*
 !media/group_messages/.gitkeep
 
 tz.md

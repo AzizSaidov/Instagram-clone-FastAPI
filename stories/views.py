@@ -10,6 +10,15 @@ from users.permissions import can_view_content
 from utils import get_dushanbe_time
 
 
+def is_story_expired(story: Story):
+    now = get_dushanbe_time()
+
+    if story.expires_at.tzinfo is None:
+        now = now.replace(tzinfo=None)
+
+    return story.expires_at <= now
+
+
 def create_story(data: StoryCreate, db: Session, user_id: int):
     if data.post_id is not None:
         post = db.query(Post).filter(Post.id == data.post_id).first()
@@ -40,7 +49,7 @@ def get_story(story_id: int, db: Session, current_user_id: int):
     if story is None:
         raise HTTPException(status_code=404, detail="Story not found")
 
-    if story.expires_at <= get_dushanbe_time():
+    if is_story_expired(story):
         raise HTTPException(status_code=404, detail="Story expired")
 
     if not can_view_content(db, current_user_id, story.user_id):
@@ -72,7 +81,7 @@ def create_story_view(story_id: int, db: Session, user_id: int):
     if story is None:
         raise HTTPException(status_code=404, detail="Story not found")
 
-    if story.expires_at <= get_dushanbe_time():
+    if is_story_expired(story):
         raise HTTPException(status_code=404, detail="Story expired")
 
     if not can_view_content(db, user_id, story.user_id):

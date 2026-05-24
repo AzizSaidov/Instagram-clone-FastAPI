@@ -72,6 +72,14 @@ class PostMediaRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PostUserRead(BaseModel):
+    id: int
+    username: str
+    avatar_url: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PostRead(BaseModel):
     id: int
     user_id: int
@@ -80,6 +88,7 @@ class PostRead(BaseModel):
     views_count: int
     created_at: datetime
     media: list[PostMediaRead]
+    user: PostUserRead
 
     model_config = ConfigDict(from_attributes=True)
 

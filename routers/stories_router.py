@@ -76,3 +76,10 @@ def view_story(story_id: int, db: Session = Depends(get_db), current_user: User 
     return {
         "story": create_story_view(story_id, db, current_user.id)
     }
+
+
+@stories_router.post("/{story_id}/views/", response_model=StoryResponse)
+def view_story_tz_path(story_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return {
+        "story": create_story_view(story_id, db, current_user.id)
+    }

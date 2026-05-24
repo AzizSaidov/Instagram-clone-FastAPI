@@ -16,3 +16,17 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_dushanbe_time, nullable=False)
 
     profile = relationship("Profile", back_populates="user", uselist=False)
+
+    @property
+    def username(self):
+        if self.profile is None:
+            return None
+
+        return self.profile.username
+
+    @property
+    def avatar_url(self):
+        if self.profile is None:
+            return None
+
+        return self.profile.avatar_url
