@@ -10,6 +10,7 @@ from follows.views import (
     get_followers,
     get_following,
     reject_follow_request,
+    remove_follower,
     unfollow_user,
 )
 from users.auth import get_current_user
@@ -42,6 +43,11 @@ def follow(username: str, db: Session = Depends(get_db), current_user: User = De
 @follows_router.delete("/{username}/")
 def unfollow(username: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return unfollow_user(username, db, current_user.id)
+
+
+@follows_router.delete("/followers/{username}/")
+def delete_follower(username: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return remove_follower(username, db, current_user.id)
 
 
 @follows_router.get("/{username}/followers/", response_model=FollowsListResponse)

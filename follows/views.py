@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from follows.models import Follow
-from notifications.views import create_notification
+from notifications.views import create_notification, delete_follow_notifications
 from profiles.models import Profile
 from users.permissions import can_view_content, is_blocked
 
@@ -92,10 +92,34 @@ def unfollow_user(username: str, db: Session, user_id: int):
     if follow is None:
         raise HTTPException(status_code=404, detail="Follow not found")
 
+    delete_follow_notifications(
+        db,
+        to_user_id=profile.user_id,
+        from_user_id=user_id,
+        notification_type="follow_request" if not follow.is_accepted else "follow",
+    )
     db.delete(follow)
     db.commit()
 
     return {"message": "Unfollowed successfully"}
+
+
+def remove_follower(username: str, db: Session, user_id: int):
+    follower_profile = get_profile_or_404(username, db)
+
+    follow = db.query(Follow).filter(
+        Follow.follower_id == follower_profile.user_id,
+        Follow.following_id == user_id,
+        Follow.is_accepted == True
+    ).first()
+
+    if follow is None:
+        raise HTTPException(status_code=404, detail="Follower not found")
+
+    db.delete(follow)
+    db.commit()
+
+    return {"message": "Follower removed successfully"}
 
 
 def accept_follow_request(username: str, db: Session, user_id: int):
@@ -116,6 +140,12 @@ def accept_follow_request(username: str, db: Session, user_id: int):
         raise HTTPException(status_code=400, detail="Follow request already accepted")
 
     follow.is_accepted = True
+    delete_follow_notifications(
+        db,
+        to_user_id=user_id,
+        from_user_id=follower_profile.user_id,
+        notification_type="follow_request",
+    )
 
     db.commit()
     db.refresh(follow)
@@ -135,6 +165,12 @@ def reject_follow_request(username: str, db: Session, user_id: int):
     if follow is None:
         raise HTTPException(status_code=404, detail="Follow request not found")
 
+    delete_follow_notifications(
+        db,
+        to_user_id=user_id,
+        from_user_id=follower_profile.user_id,
+        notification_type="follow_request",
+    )
     db.delete(follow)
     db.commit()
 

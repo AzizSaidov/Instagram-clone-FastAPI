@@ -1,12 +1,13 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
+from profiles.schemas import ProfileSearchResponse
 from reels.schemas import ReelCreate, ReelResponse, ReelsListResponse, ReelWatchUpdate
-from reels.views import create_reel, get_reel, get_user_reels, update_reel_view
+from reels.views import create_reel, delete_reel, get_feed_reels, get_reel, get_reel_viewers, get_user_reels, update_reel_view
 from users.auth import get_current_user
 from users.models import User
 
@@ -57,6 +58,11 @@ def my_reels(limit: int = 20, offset: int = 0, db: Session = Depends(get_db), cu
     return get_user_reels(db, current_user.id, limit, offset)
 
 
+@reels_router.get("/feed/", response_model=ReelsListResponse)
+def feed_reels(limit: int = 10, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return get_feed_reels(db, current_user.id, limit, offset)
+
+
 @reels_router.get("/{reels_id}/", response_model=ReelResponse)
 def reels_detail(reels_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return {
@@ -69,3 +75,14 @@ def watch_reels(reels_id: int, data: ReelWatchUpdate, db: Session = Depends(get_
     return {
         "reel": update_reel_view(reels_id, data, db, current_user.id)
     }
+
+
+@reels_router.get("/{reels_id}/viewers/", response_model=ProfileSearchResponse)
+def reels_viewers(reels_id: int, limit: int = 50, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return get_reel_viewers(reels_id, db, current_user.id, limit, offset)
+
+
+@reels_router.delete("/{reels_id}/", status_code=204)
+def delete_my_reels(reels_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    delete_reel(reels_id, db, current_user.id)
+    return Response(status_code=204)

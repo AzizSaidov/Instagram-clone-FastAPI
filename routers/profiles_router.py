@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from profiles.schemas import MyProfileResponse, ProfilePageResponse, ProfileSearchResponse, ProfileUpdate
-from profiles.views import get_my_profile, get_profile_page, search_profiles, update_my_profile
+from profiles.views import delete_my_avatar, get_my_profile, get_profile_page, get_profile_recommendations, search_profiles, update_my_profile
 from users.auth import get_current_user
 from users.models import User
 
@@ -61,9 +61,23 @@ def upload_my_avatar(file: UploadFile = File(...), db: Session = Depends(get_db)
     }
 
 
+@profiles_router.delete("/me/avatar/", response_model=MyProfileResponse)
+def remove_my_avatar(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user.profile = delete_my_avatar(db, current_user.id)
+
+    return {
+        "user": current_user
+    }
+
+
 @profiles_router.get("/search/", response_model=ProfileSearchResponse)
 def profiles_search(query: str, limit: int = 20, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return search_profiles(query, db, current_user.id, limit, offset)
+
+
+@profiles_router.get("/recommendations/", response_model=ProfileSearchResponse)
+def profiles_recommendations(limit: int = 5, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return get_profile_recommendations(db, current_user.id, limit, offset)
 
 
 @profiles_router.get("/{username}/", response_model=ProfilePageResponse)

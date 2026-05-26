@@ -86,6 +86,10 @@ class PostRead(BaseModel):
     description: str | None
     hashtag: str | None
     views_count: int
+    likes_count: int
+    comments_count: int
+    is_liked: bool
+    is_saved: bool
     created_at: datetime
     media: list[PostMediaRead]
     user: PostUserRead

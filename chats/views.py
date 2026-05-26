@@ -47,7 +47,15 @@ def get_message_data(message: DirectMessage, profile: Profile):
         "media_url": message.media_url,
         "is_read": message.is_read,
         "created_at": message.created_at,
-        "sender": profile
+        "sender": get_compact_profile_data(profile)
+    }
+
+
+def get_compact_profile_data(profile: Profile):
+    return {
+        "id": profile.user_id,
+        "username": profile.username,
+        "avatar_url": profile.avatar_url
     }
 
 
@@ -58,11 +66,7 @@ def get_message_realtime_data(message: DirectMessage, profile: Profile):
         "media_url": message.media_url,
         "is_read": message.is_read,
         "created_at": message.created_at.isoformat(),
-        "sender": {
-            "id": profile.id,
-            "username": profile.username,
-            "avatar_url": profile.avatar_url
-        }
+        "sender": get_compact_profile_data(profile)
     }
 
 
@@ -100,8 +104,8 @@ def get_chat_data(chat: Chat, db: Session):
         "id": chat.id,
         "created_at": chat.created_at,
         "updated_at": chat.updated_at,
-        "user_1": user_1_profile,
-        "user_2": user_2_profile,
+        "user_1": get_compact_profile_data(user_1_profile),
+        "user_2": get_compact_profile_data(user_2_profile),
         "last_message": last_message_data
     }
 

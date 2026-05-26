@@ -6,6 +6,7 @@ from comments.schemas import CommentCreate, CommentUpdate
 from notifications.views import create_notification
 from posts.models import Post
 from profiles.models import Profile
+from realtime.manager import send_realtime_event_to_topic
 from reels.models import Reel
 from users.permissions import can_view_content
 
@@ -19,6 +20,14 @@ def get_comment_or_404(comment_id: int, db: Session):
     return comment
 
 
+def get_compact_profile_data(profile: Profile):
+    return {
+        "id": profile.user_id,
+        "username": profile.username,
+        "avatar_url": profile.avatar_url,
+    }
+
+
 def get_comment_data(comment: Comment, profile: Profile):
     return {
         "id": comment.id,
@@ -26,8 +35,28 @@ def get_comment_data(comment: Comment, profile: Profile):
         "reels_id": comment.reels_id,
         "text": comment.text,
         "created_at": comment.created_at,
-        "user": profile
+        "user": get_compact_profile_data(profile)
     }
+
+
+def get_comment_realtime_data(comment: Comment, profile: Profile):
+    data = get_comment_data(comment, profile)
+    data["created_at"] = comment.created_at.isoformat()
+    return data
+
+
+def send_post_comment_realtime_event(comment: Comment, profile: Profile):
+    if comment.post_id is None:
+        return
+
+    send_realtime_event_to_topic(
+        f"post:{comment.post_id}",
+        {
+            "event": "post_comment_created",
+            "post_id": comment.post_id,
+            "comment": get_comment_realtime_data(comment, profile),
+        }
+    )
 
 
 def get_comment_response(comment: Comment, db: Session):
@@ -87,6 +116,11 @@ def create_post_comment(post_id: int, data: CommentCreate, db: Session, user_id:
         db=db,
         post_id=post_id
     )
+
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+
+    if profile:
+        send_post_comment_realtime_event(new_comment, profile)
 
     return get_comment_response(new_comment, db)
 

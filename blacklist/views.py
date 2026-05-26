@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from blacklist.models import BlackList
 from follows.models import Follow
+from notifications.models import Notification
 from profiles.models import Profile
 
 
@@ -66,6 +67,17 @@ def block_user(username: str, db: Session, user_id: int):
 
     for follow in follows:
         db.delete(follow)
+
+    db.query(Notification).filter(
+        (
+            (Notification.to_user_id == user_id) &
+            (Notification.from_user_id == profile.user_id)
+        ) |
+        (
+            (Notification.to_user_id == profile.user_id) &
+            (Notification.from_user_id == user_id)
+        )
+    ).delete(synchronize_session=False)
 
     db.add(new_blacklist)
     db.commit()

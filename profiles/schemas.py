@@ -112,6 +112,8 @@ class ProfilePageRead(BaseModel):
     bio: str | None
     avatar_url: str | None
     is_private: bool
+    is_following: bool
+    is_follow_requested: bool
     posts_count: int
     reels_count: int
     followers_count: int

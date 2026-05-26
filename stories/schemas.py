@@ -49,6 +49,7 @@ class StoryRead(BaseModel):
     media_url: str | None
     expires_at: datetime
     views_count: int
+    is_viewed: bool
     created_at: datetime
     user: StoryUserRead
 

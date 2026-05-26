@@ -1,12 +1,13 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
+from profiles.schemas import ProfileSearchResponse
 from stories.schemas import StoriesListResponse, StoryCreate, StoryResponse
-from stories.views import create_story, create_story_view, get_story, get_user_stories
+from stories.views import create_story, create_story_view, delete_story, get_feed_stories, get_story, get_story_viewers, get_user_stories
 from users.auth import get_current_user
 from users.models import User
 
@@ -61,7 +62,12 @@ def create_story_from_post(post_id: int, db: Session = Depends(get_db), current_
 
 @stories_router.get("/my/", response_model=StoriesListResponse)
 def my_stories(limit: int = 20, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return get_user_stories(db, current_user.id, limit, offset)
+    return get_user_stories(db, current_user.id, limit, offset, current_user.id)
+
+
+@stories_router.get("/feed/", response_model=StoriesListResponse)
+def feed_stories(limit: int = 50, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return get_feed_stories(db, current_user.id, limit, offset)
 
 
 @stories_router.get("/{story_id}/", response_model=StoryResponse)
@@ -78,8 +84,12 @@ def view_story(story_id: int, db: Session = Depends(get_db), current_user: User 
     }
 
 
-@stories_router.post("/{story_id}/views/", response_model=StoryResponse)
-def view_story_tz_path(story_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return {
-        "story": create_story_view(story_id, db, current_user.id)
-    }
+@stories_router.get("/{story_id}/viewers/", response_model=ProfileSearchResponse)
+def story_viewers(story_id: int, limit: int = 50, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return get_story_viewers(story_id, db, current_user.id, limit, offset)
+
+
+@stories_router.delete("/{story_id}/", status_code=204)
+def delete_my_story(story_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    delete_story(story_id, db, current_user.id)
+    return Response(status_code=204)

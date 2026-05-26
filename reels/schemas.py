@@ -78,6 +78,9 @@ class ReelRead(BaseModel):
     description: str | None
     hashtag: str | None
     views_count: int
+    likes_count: int
+    comments_count: int
+    is_liked: bool
     created_at: datetime
     user: ReelUserRead
 

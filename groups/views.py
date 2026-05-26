@@ -49,6 +49,14 @@ def check_group_owner(group: Group, user_id: int):
         raise HTTPException(status_code=403, detail="Only group owner can do this")
 
 
+def get_compact_profile_data(profile: Profile):
+    return {
+        "id": profile.user_id,
+        "username": profile.username,
+        "avatar_url": profile.avatar_url
+    }
+
+
 def get_group_message_data(message: GroupMessage, profile: Profile):
     return {
         "id": message.id,
@@ -56,7 +64,7 @@ def get_group_message_data(message: GroupMessage, profile: Profile):
         "media_url": message.media_url,
         "is_read": message.is_read,
         "created_at": message.created_at,
-        "sender": profile
+        "sender": get_compact_profile_data(profile)
     }
 
 
@@ -67,11 +75,7 @@ def get_group_message_realtime_data(message: GroupMessage, profile: Profile):
         "media_url": message.media_url,
         "is_read": message.is_read,
         "created_at": message.created_at.isoformat(),
-        "sender": {
-            "id": profile.id,
-            "username": profile.username,
-            "avatar_url": profile.avatar_url
-        }
+        "sender": get_compact_profile_data(profile)
     }
 
 
@@ -112,7 +116,7 @@ def get_group_data(group: Group, db: Session):
         "avatar_url": group.avatar_url,
         "created_at": group.created_at,
         "updated_at": group.updated_at,
-        "owner": owner_profile,
+        "owner": get_compact_profile_data(owner_profile),
         "members_count": members_count,
         "last_message": last_message_data
     }
@@ -295,7 +299,7 @@ def get_group_members(group_id: int, db: Session, user_id: int, limit: int = 20,
         profile = profiles_by_user_id.get(member.user_id)
 
         if profile:
-            users.append(profile)
+            users.append(get_compact_profile_data(profile))
 
     return {
         "users": users,

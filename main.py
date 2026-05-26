@@ -14,6 +14,7 @@ from stories.models import Story, StoryView
 from follows.models import Follow
 from comments.models import Comment
 from likes.models import Like
+from saved.models import SavedPost
 from blacklist.models import BlackList
 from notes.models import Note
 from notifications.models import Notification
@@ -31,6 +32,7 @@ from routers.notifications_router import notifications_router
 from routers.posts_router import posts_router
 from routers.profiles_router import profiles_router
 from routers.reels_router import reels_router
+from routers.saved_router import saved_router
 from routers.stories_router import stories_router
 from routers.users_router import users_router
 from routers.websocket_router import websocket_router
@@ -58,6 +60,7 @@ app.include_router(stories_router)
 app.include_router(follows_router)
 app.include_router(comments_router)
 app.include_router(likes_router)
+app.include_router(saved_router, prefix="/saved", tags=["Saved"])
 app.include_router(blacklist_router)
 app.include_router(notes_router)
 app.include_router(notifications_router)

@@ -33,4 +33,5 @@ media/direct_messages/*
 media/group_messages/*
 !media/group_messages/.gitkeep
 
-tz.md
+TZ_instagram_clone_web.md
+FRONTEND_API_AUDIT.md
