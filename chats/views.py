@@ -181,6 +181,16 @@ def get_chat_detail(chat_id: int, db: Session, user_id: int):
     }
 
 
+def delete_chat(chat_id: int, db: Session, user_id: int):
+    chat = get_chat_or_404(chat_id, db)
+    check_chat_member(chat, user_id)
+
+    db.delete(chat)
+    db.commit()
+
+    return {"message": "Chat deleted successfully"}
+
+
 def create_direct_message(chat_id: int, data: DirectMessageCreate, db: Session, user_id: int):
     chat = get_chat_or_404(chat_id, db)
     check_chat_member(chat, user_id)

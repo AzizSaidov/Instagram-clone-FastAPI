@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ProfileSearchUser } from '../types/profiles'
 import { getApiError } from '../utils/apiError'
@@ -7,14 +7,25 @@ import { Avatar } from './Avatar'
 
 interface ViewersModalProps {
   title: string
+  viewerKey?: number | string
   loadViewers: () => Promise<{ users: ProfileSearchUser[] }>
   onClose: () => void
 }
 
-export function ViewersModal({ title, loadViewers, onClose }: ViewersModalProps) {
+export function ViewersModal({
+  title,
+  viewerKey,
+  loadViewers,
+  onClose,
+}: ViewersModalProps) {
   const [users, setUsers] = useState<ProfileSearchUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const loadViewersRef = useRef(loadViewers)
+
+  useEffect(() => {
+    loadViewersRef.current = loadViewers
+  }, [loadViewers])
 
   useEffect(() => {
     let isCurrent = true
@@ -24,7 +35,7 @@ export function ViewersModal({ title, loadViewers, onClose }: ViewersModalProps)
       setError(null)
 
       try {
-        const data = await loadViewers()
+        const data = await loadViewersRef.current()
 
         if (isCurrent) {
           setUsers(data.users)
@@ -45,11 +56,33 @@ export function ViewersModal({ title, loadViewers, onClose }: ViewersModalProps)
     return () => {
       isCurrent = false
     }
-  }, [loadViewers])
+  }, [viewerKey])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4">
-      <section className="flex max-h-[80svh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-ig-border bg-ig-surface shadow-2xl">
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4"
+      onMouseDown={onClose}
+    >
+      <section
+        className="flex max-h-[80svh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-ig-border bg-ig-surface shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <header className="flex h-12 items-center justify-between border-b border-ig-border px-4">
           <h2 className="text-sm font-semibold">{title}</h2>
           <button

@@ -83,4 +83,20 @@ export interface SavedPostsListResponse {
   }
 }
 
+export interface SavedReel {
+  id: number
+  reels_id: number
+  created_at: string
+  reel: Reel
+}
+
+export interface SavedReelsListResponse {
+  saved_reels: SavedReel[]
+  pagination: {
+    limit: number
+    offset: number
+    has_next: boolean
+  }
+}
+
 export type MyProfileResponse = MeResponse

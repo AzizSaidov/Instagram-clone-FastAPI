@@ -14,7 +14,7 @@ from stories.models import Story, StoryView
 from follows.models import Follow
 from comments.models import Comment
 from likes.models import Like
-from saved.models import SavedPost
+from saved.models import SavedPost, SavedReel
 from blacklist.models import BlackList
 from notes.models import Note
 from notifications.models import Notification

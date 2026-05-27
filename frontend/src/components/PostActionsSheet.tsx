@@ -12,6 +12,7 @@ interface PostActionsSheetProps {
   onDelete?: () => Promise<void> | void
   onOpenPost?: () => void
   onOpenViewers?: () => void
+  onShareToStory?: () => Promise<void> | void
 }
 
 function copyText(value: string) {
@@ -41,6 +42,7 @@ export function PostActionsSheet({
   onDelete,
   onOpenPost,
   onOpenViewers,
+  onShareToStory,
 }: PostActionsSheetProps) {
   const navigate = useNavigate()
   const [isRunning, setIsRunning] = useState(false)
@@ -123,6 +125,16 @@ export function PostActionsSheet({
         >
           {post.is_saved ? 'Убрать из сохранённого' : 'Сохранить'}
         </button>
+        {onShareToStory && (
+          <button
+            className={rowClass}
+            type="button"
+            disabled={isRunning}
+            onClick={() => void runAction(onShareToStory)}
+          >
+            Поделиться в историю
+          </button>
+        )}
         <button
           className={rowClass}
           type="button"

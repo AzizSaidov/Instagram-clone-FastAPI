@@ -46,6 +46,8 @@ class CommentRead(BaseModel):
     post_id: int | None
     reels_id: int | None
     text: str
+    likes_count: int
+    is_liked: bool
     created_at: datetime
     user: CommentUserRead
 

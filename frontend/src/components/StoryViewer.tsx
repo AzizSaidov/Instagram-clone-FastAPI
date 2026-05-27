@@ -150,7 +150,7 @@ export function StoryViewer({
   }, [story])
 
   useEffect(() => {
-    if (!story || isResolvingMedia) {
+    if (!story || isResolvingMedia || viewersStoryId !== null) {
       return undefined
     }
 
@@ -166,10 +166,14 @@ export function StoryViewer({
       window.cancelAnimationFrame(frame)
       window.clearTimeout(timer)
     }
-  }, [durationMs, goNext, isResolvingMedia, story])
+  }, [durationMs, goNext, isResolvingMedia, story, viewersStoryId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (viewersStoryId !== null) {
+        return
+      }
+
       if (event.key === 'Escape') {
         onClose()
       }
@@ -186,7 +190,7 @@ export function StoryViewer({
     window.addEventListener('keydown', handleKeyDown)
 
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [goNext, goPrevious, onClose])
+  }, [goNext, goPrevious, onClose, viewersStoryId])
 
   async function handleDeleteStory() {
     if (!story) {
@@ -375,6 +379,7 @@ export function StoryViewer({
       {viewersStoryId !== null && (
         <ViewersModal
           title="Просмотры истории"
+          viewerKey={viewersStoryId}
           loadViewers={() => getStoryViewers(viewersStoryId)}
           onClose={() => setViewersStoryId(null)}
         />

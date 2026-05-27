@@ -5,7 +5,7 @@ export function mediaUrl(path: string | null | undefined) {
     return null
   }
 
-  if (/^https?:\/\//i.test(path)) {
+  if (/^(https?:\/\/|blob:|data:)/i.test(path)) {
     return path
   }
 

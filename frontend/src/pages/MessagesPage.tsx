@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  ImagePlus,
   Info,
   Loader2,
   LogOut,
@@ -27,12 +28,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createNote, deleteMyNote, getMyNote, getNotes } from '../api/feed'
 import {
   addGroupMember,
+  deleteChat as deleteChatRequest,
   deleteGroup,
   getGroup,
   getGroupMembers,
   leaveGroup,
   removeGroupMember,
   updateGroup,
+  uploadGroupAvatar,
 } from '../api/messages'
 import { Avatar } from '../components/Avatar'
 import { TimeAgo } from '../components/TimeAgo'
@@ -335,13 +338,20 @@ function DirectNotesStrip({
   notes,
   onMyNoteClick,
 }: {
-  username: string
+  username?: string
   avatarUrl?: string | null
   myNote: Note | null
   notes: Note[]
   onMyNoteClick: () => void
 }) {
-  const visibleNotes = notes.filter((note) => note.user.username !== username)
+  const ownUsername = (username ?? myNote?.user.username)?.toLowerCase()
+  const visibleNotes = notes.filter((note) => {
+    if (myNote && note.id === myNote.id) {
+      return false
+    }
+
+    return note.user.username.toLowerCase() !== ownUsername
+  })
 
   return (
     <section
@@ -463,6 +473,96 @@ function NoteModal({
   )
 }
 
+function ChatInfoModal({
+  chat,
+  myUserId,
+  onClose,
+  onChatRemoved,
+}: {
+  chat: Chat
+  myUserId: number | undefined
+  onClose: () => void
+  onChatRemoved: (chatId: number) => void
+}) {
+  const navigate = useNavigate()
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const companion = getChatCompanion(chat, myUserId)
+
+  async function handleDelete() {
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      await deleteChatRequest(chat.id)
+      onChatRemoved(chat.id)
+    } catch (error) {
+      setError(getApiError(error))
+      setIsDeleting(false)
+    }
+  }
+
+  function handleOpenProfile() {
+    onClose()
+    navigate(`/profile/${companion.username}`)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4">
+      <section className="w-full max-w-sm overflow-hidden rounded-2xl border border-ig-border bg-ig-surface shadow-2xl">
+        <header className="flex h-14 items-center justify-between border-b border-ig-border px-4">
+          <h2 className="font-semibold">Информация о чате</h2>
+          <button
+            className="rounded-full p-2 transition hover:bg-ig-elevated"
+            type="button"
+            aria-label="Закрыть"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </button>
+        </header>
+
+        <div className="px-5 py-5 text-center">
+          <div className="mx-auto flex justify-center">
+            <ConversationAvatar
+              title={companion.username}
+              src={companion.avatar_url}
+              size={56}
+            />
+          </div>
+          <p className="mt-3 truncate text-base font-semibold">
+            {companion.username}
+          </p>
+          {error && (
+            <p className="mt-4 rounded-lg border border-ig-danger/50 bg-ig-danger/10 px-3 py-2 text-sm text-ig-danger">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2 border-t border-ig-border px-4 py-3">
+          <button
+            className="flex h-10 w-full items-center justify-center rounded-lg bg-ig-elevated text-sm font-semibold transition hover:bg-[#2A2A2A]"
+            type="button"
+            onClick={handleOpenProfile}
+          >
+            Открыть профиль
+          </button>
+          <button
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-ig-elevated text-sm font-semibold text-ig-danger transition hover:bg-[#2A2A2A] disabled:opacity-40"
+            type="button"
+            disabled={isDeleting}
+            onClick={() => void handleDelete()}
+          >
+            {isDeleting ? <Loader2 className="animate-spin" size={17} /> : <Trash2 size={17} />}
+            Удалить чат
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function GroupInfoModal({
   group,
   myUserId,
@@ -476,9 +576,10 @@ function GroupInfoModal({
   onGroupChanged: (group: Group) => void
   onGroupRemoved: (groupId: number) => void
 }) {
+  const navigate = useNavigate()
   const [members, setMembers] = useState<DirectMessage['sender'][]>([])
   const [groupName, setGroupName] = useState(group.name)
-  const [avatarUrl, setAvatarUrl] = useState(group.avatar_url ?? '')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [query, setQuery] = useState('')
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -492,6 +593,11 @@ function GroupInfoModal({
   const addableUsers = searchResults.filter(
     (result) => !memberUsernames.has(result.username),
   )
+  const avatarPreview = useMemo(
+    () => (avatarFile ? URL.createObjectURL(avatarFile) : null),
+    [avatarFile],
+  )
+  const avatarSrc = avatarPreview ?? group.avatar_url
 
   const loadMembers = useCallback(async () => {
     setIsLoadingMembers(true)
@@ -518,11 +624,19 @@ function GroupInfoModal({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setGroupName(group.name)
-      setAvatarUrl(group.avatar_url ?? '')
+      setAvatarFile(null)
     }, 0)
 
     return () => window.clearTimeout(timer)
   }, [group.avatar_url, group.name])
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview)
+      }
+    }
+  }, [avatarPreview])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -549,10 +663,15 @@ function GroupInfoModal({
     setMessage(null)
 
     try {
-      const data = await updateGroup(group.id, {
+      let data = await updateGroup(group.id, {
         name: groupName.trim(),
-        avatar_url: avatarUrl.trim() || null,
       })
+
+      if (avatarFile) {
+        data = await uploadGroupAvatar(group.id, avatarFile)
+        setAvatarFile(null)
+      }
+
       onGroupChanged(data.group)
       setMessage('Группа обновлена')
     } catch (error) {
@@ -623,6 +742,11 @@ function GroupInfoModal({
     }
   }
 
+  function handleOpenProfile(username: string) {
+    onClose()
+    navigate(`/profile/${username}`)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4">
       <section className="flex max-h-[88svh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-ig-border bg-ig-surface shadow-2xl">
@@ -653,7 +777,11 @@ function GroupInfoModal({
 
           <form className="space-y-3" onSubmit={handleUpdate}>
             <div className="flex items-center gap-3">
-              <ConversationAvatar title={group.name} src={avatarUrl} size={56} />
+              <ConversationAvatar
+                title={groupName || group.name}
+                src={avatarSrc}
+                size={56}
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{group.name}</p>
                 <p className="text-xs text-ig-muted">
@@ -669,23 +797,40 @@ function GroupInfoModal({
               value={groupName}
               onChange={(event) => setGroupName(event.target.value)}
             />
-            <input
-              className="h-10 w-full rounded-lg border border-ig-border bg-ig-bg px-3 text-sm outline-none placeholder:text-ig-faint focus:border-ig-faint disabled:opacity-60"
-              disabled={!isOwner}
-              maxLength={255}
-              placeholder="Ссылка на аватар группы"
-              value={avatarUrl}
-              onChange={(event) => setAvatarUrl(event.target.value)}
-            />
             {isOwner && (
-              <button
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-ig-primary px-4 text-sm font-semibold text-white transition hover:bg-[#1877F2] disabled:opacity-40"
-                type="submit"
-                disabled={isSaving || !groupName.trim()}
-              >
-                {isSaving && <Loader2 className="animate-spin" size={15} />}
-                Сохранить
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-ig-elevated px-3 text-sm font-semibold transition hover:bg-[#2A2A2A]">
+                  <ImagePlus size={16} />
+                  <span className="max-w-[220px] truncate">
+                    {avatarFile ? avatarFile.name : 'Загрузить аватар'}
+                  </span>
+                  <input
+                    className="hidden"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) =>
+                      setAvatarFile(event.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+                {avatarFile && (
+                  <button
+                    className="h-9 rounded-lg px-3 text-sm font-semibold text-ig-muted transition hover:bg-ig-elevated hover:text-ig-text"
+                    type="button"
+                    onClick={() => setAvatarFile(null)}
+                  >
+                    Убрать
+                  </button>
+                )}
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-ig-primary px-4 text-sm font-semibold text-white transition hover:bg-[#1877F2] disabled:opacity-40"
+                  type="submit"
+                  disabled={isSaving || !groupName.trim()}
+                >
+                  {isSaving && <Loader2 className="animate-spin" size={15} />}
+                  Сохранить
+                </button>
+              </div>
             )}
           </form>
 
@@ -747,17 +892,23 @@ function GroupInfoModal({
               {!isLoadingMembers &&
                 members.map((member) => (
                   <div className="flex items-center gap-3 py-3" key={member.id}>
-                    <ConversationAvatar
-                      title={member.username}
-                      src={member.avatar_url}
-                      size={44}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{member.username}</p>
-                      {member.id === group.owner.id && (
-                        <p className="text-xs text-ig-muted">Владелец</p>
-                      )}
-                    </div>
+                    <button
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left transition hover:text-ig-muted"
+                      type="button"
+                      onClick={() => handleOpenProfile(member.username)}
+                    >
+                      <ConversationAvatar
+                        title={member.username}
+                        src={member.avatar_url}
+                        size={44}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{member.username}</p>
+                        {member.id === group.owner.id && (
+                          <p className="text-xs text-ig-muted">Владелец</p>
+                        )}
+                      </div>
+                    </button>
                     {isOwner && member.id !== group.owner.id && (
                       <button
                         className="rounded-full p-2 text-ig-muted transition hover:bg-ig-elevated hover:text-ig-danger"
@@ -811,7 +962,7 @@ function NewChatModal({
   onClose: () => void
   onCreateGroup: (payload: {
     name: string
-    avatarUrl?: string | null
+    avatarFile?: File | null
     memberUsernames: string[]
   }) => Promise<void>
   onStart: (username: string) => void
@@ -820,7 +971,7 @@ function NewChatModal({
   const [mode, setMode] = useState<'chat' | 'group'>('chat')
   const [query, setQuery] = useState('')
   const [groupName, setGroupName] = useState('')
-  const [groupAvatar, setGroupAvatar] = useState('')
+  const [groupAvatarFile, setGroupAvatarFile] = useState<File | null>(null)
   const [selectedUsers, setSelectedUsers] = useState<FollowRequestUser[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const searchResults = useMessagesStore((state) => state.searchResults)
@@ -832,6 +983,10 @@ function NewChatModal({
       result.username !== user?.profile.username &&
       !selectedUsernames.has(result.username),
   )
+  const groupAvatarPreview = useMemo(
+    () => (groupAvatarFile ? URL.createObjectURL(groupAvatarFile) : null),
+    [groupAvatarFile],
+  )
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -840,6 +995,14 @@ function NewChatModal({
 
     return () => window.clearTimeout(timer)
   }, [query, searchUsers])
+
+  useEffect(() => {
+    return () => {
+      if (groupAvatarPreview) {
+        URL.revokeObjectURL(groupAvatarPreview)
+      }
+    }
+  }, [groupAvatarPreview])
 
   async function handleCreateGroup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -853,7 +1016,7 @@ function NewChatModal({
     try {
       await onCreateGroup({
         name: groupName.trim(),
-        avatarUrl: groupAvatar.trim() || null,
+        avatarFile: groupAvatarFile,
         memberUsernames: selectedUsers.map((item) => item.username),
       })
     } finally {
@@ -905,13 +1068,38 @@ function NewChatModal({
               value={groupName}
               onChange={(event) => setGroupName(event.target.value)}
             />
-            <input
-              className="mt-2 h-10 w-full rounded-lg border border-ig-border bg-ig-bg px-3 text-sm outline-none placeholder:text-ig-faint focus:border-ig-faint"
-              maxLength={255}
-              placeholder="Ссылка на аватар группы (необязательно)"
-              value={groupAvatar}
-              onChange={(event) => setGroupAvatar(event.target.value)}
-            />
+            <div className="mt-3 flex items-center gap-3">
+              <ConversationAvatar
+                title={groupName || 'Группа'}
+                src={groupAvatarPreview}
+                size={56}
+              />
+              <div className="min-w-0 flex-1">
+                <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-ig-elevated px-3 text-sm font-semibold transition hover:bg-[#2A2A2A]">
+                  <ImagePlus size={16} />
+                  <span className="max-w-[220px] truncate">
+                    {groupAvatarFile ? groupAvatarFile.name : 'Загрузить аватар'}
+                  </span>
+                  <input
+                    className="hidden"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) =>
+                      setGroupAvatarFile(event.target.files?.[0] ?? null)
+                    }
+                  />
+                </label>
+                {groupAvatarFile && (
+                  <button
+                    className="ml-2 h-9 rounded-lg px-3 text-sm font-semibold text-ig-muted transition hover:bg-ig-elevated hover:text-ig-text"
+                    type="button"
+                    onClick={() => setGroupAvatarFile(null)}
+                  >
+                    Убрать
+                  </button>
+                )}
+              </div>
+            </div>
             {selectedUsers.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {selectedUsers.map((selectedUser) => (
@@ -1021,6 +1209,7 @@ export function MessagesPage() {
   const rejectRequest = useMessagesStore((state) => state.rejectRequest)
   const createGroup = useMessagesStore((state) => state.createGroup)
   const upsertGroup = useMessagesStore((state) => state.upsertGroup)
+  const removeChat = useMessagesStore((state) => state.removeChat)
   const removeGroup = useMessagesStore((state) => state.removeGroup)
   const startChat = useMessagesStore((state) => state.startChat)
   const setActive = useMessagesStore((state) => state.setActive)
@@ -1030,6 +1219,7 @@ export function MessagesPage() {
   const [leftTab, setLeftTab] = useState<LeftTab>('messages')
   const [filter, setFilter] = useState('')
   const [isNewChatOpen, setIsNewChatOpen] = useState(false)
+  const [isChatInfoOpen, setIsChatInfoOpen] = useState(false)
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false)
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
   const [notes, setNotes] = useState<Note[]>([])
@@ -1176,7 +1366,7 @@ export function MessagesPage() {
 
   async function handleCreateGroup(payload: {
     name: string
-    avatarUrl?: string | null
+    avatarFile?: File | null
     memberUsernames: string[]
   }) {
     const group = await createGroup(payload)
@@ -1190,6 +1380,12 @@ export function MessagesPage() {
   function handleGroupRemoved(groupId: number) {
     removeGroup(groupId)
     setIsGroupInfoOpen(false)
+    navigate('/messages')
+  }
+
+  function handleChatRemoved(chatId: number) {
+    removeChat(chatId)
+    setIsChatInfoOpen(false)
     navigate('/messages')
   }
 
@@ -1302,7 +1498,7 @@ export function MessagesPage() {
               setNoteError(null)
               setIsNoteModalOpen(true)
             }}
-            username={user?.profile.username ?? 'Вы'}
+            username={user?.profile.username}
           />
         )}
 
@@ -1442,6 +1638,8 @@ export function MessagesPage() {
                 onClick={() => {
                   if (activeGroup) {
                     setIsGroupInfoOpen(true)
+                  } else if (activeChat) {
+                    setIsChatInfoOpen(true)
                   }
                 }}
               >
@@ -1532,6 +1730,15 @@ export function MessagesPage() {
           onClose={() => setIsGroupInfoOpen(false)}
           onGroupChanged={upsertGroup}
           onGroupRemoved={handleGroupRemoved}
+        />
+      )}
+
+      {isChatInfoOpen && activeChat && (
+        <ChatInfoModal
+          chat={activeChat}
+          myUserId={user?.id}
+          onClose={() => setIsChatInfoOpen(false)}
+          onChatRemoved={handleChatRemoved}
         />
       )}
 

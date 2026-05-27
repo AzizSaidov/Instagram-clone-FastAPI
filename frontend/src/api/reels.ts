@@ -7,6 +7,7 @@ import type {
   ReelResponse,
   ReelsListResponse,
 } from '../types/reels'
+import type { ToggleSavedResponse } from '../types/feed'
 import type { ProfileSearchResponse } from '../types/profiles'
 
 export async function getReelsFeed(limit = 6, offset = 0) {
@@ -18,6 +19,13 @@ export async function getReelsFeed(limit = 6, offset = 0) {
 
 export async function toggleReelLike(reelsId: number) {
   const { data } = await api.post<ReelLikeResponse>(`/likes/reels/${reelsId}/`)
+  return data
+}
+
+export async function toggleReelSaved(reelsId: number) {
+  const { data } = await api.post<ToggleSavedResponse>(
+    `/saved/reels/${reelsId}/`,
+  )
   return data
 }
 

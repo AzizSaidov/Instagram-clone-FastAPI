@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
 from blacklist.models import BlackList
@@ -146,12 +146,25 @@ def get_user_posts(db: Session, user_id: int, limit: int = 20, offset: int = 0, 
 
 
 def get_feed_posts(db: Session, user_id: int, limit: int = 20, offset: int = 0):
-    feed_user_ids = get_following_ids(db, user_id)
-    feed_user_ids.append(user_id)
+    following_ids = get_following_ids(db, user_id)
+    blocked_user_ids = get_blocked_user_ids(db, user_id)
+    visibility_filters = [
+        Post.user_id == user_id,
+        Profile.is_private == False,
+    ]
 
-    posts = db.query(Post).filter(
-        Post.user_id.in_(feed_user_ids),
-    ).order_by(Post.created_at.desc()).offset(offset).limit(limit + 1).all()
+    if following_ids:
+        visibility_filters.append(Post.user_id.in_(following_ids))
+
+    query = db.query(Post).join(
+        Profile,
+        Profile.user_id == Post.user_id,
+    ).filter(or_(*visibility_filters))
+
+    if blocked_user_ids:
+        query = query.filter(Post.user_id.notin_(blocked_user_ids))
+
+    posts = query.order_by(Post.created_at.desc()).offset(offset).limit(limit + 1).all()
 
     has_next = len(posts) > limit
     posts = posts[:limit]

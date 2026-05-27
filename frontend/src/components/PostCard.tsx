@@ -22,7 +22,9 @@ interface PostCardProps {
   post: Post
   onLike: (postId: number) => void
   onOpen: (post: Post) => void
+  onOpenLikes?: (post: Post) => void
   onSave: (postId: number) => void
+  onShareToStory?: (postId: number) => Promise<void> | void
   onViewed: (postId: number) => void
   onDelete?: (postId: number) => Promise<void> | void
   onOpenViewers?: (post: Post) => void
@@ -32,7 +34,9 @@ export function PostCard({
   post,
   onLike,
   onOpen,
+  onOpenLikes,
   onSave,
+  onShareToStory,
   onViewed,
   onDelete,
   onOpenViewers,
@@ -174,19 +178,25 @@ export function PostCard({
       </div>
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            className={`inline-flex items-center gap-1.5 transition hover:text-ig-muted ${
-              post.is_liked ? 'text-ig-danger' : 'text-ig-text'
-            }`}
-            type="button"
-            aria-label="Нравится"
-            onClick={() => onLike(post.id)}
-          >
-            <Heart size={25} fill={post.is_liked ? 'currentColor' : 'none'} />
-            <span className="min-w-[1ch] text-sm font-semibold">
+          <div className="inline-flex items-center gap-1.5">
+            <button
+              className={`transition hover:text-ig-muted ${
+                post.is_liked ? 'text-ig-danger' : 'text-ig-text'
+              }`}
+              type="button"
+              aria-label="Нравится"
+              onClick={() => onLike(post.id)}
+            >
+              <Heart size={25} fill={post.is_liked ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              className="min-w-[1ch] text-sm font-semibold transition hover:text-ig-muted"
+              type="button"
+              onClick={() => onOpenLikes?.(post)}
+            >
               {compactNumber(post.likes_count)}
-            </span>
-          </button>
+            </button>
+          </div>
           <button
             className="inline-flex items-center gap-1.5 text-ig-text transition hover:text-ig-muted"
             type="button"
@@ -235,6 +245,9 @@ export function PostCard({
         onDelete={onDelete ? () => onDelete(post.id) : undefined}
         onOpenPost={() => onOpen(post)}
         onOpenViewers={canDelete ? () => onOpenViewers?.(post) : undefined}
+        onShareToStory={
+          onShareToStory ? () => onShareToStory(post.id) : undefined
+        }
         onToggleSaved={() => onSave(post.id)}
       />
     </article>

@@ -1,12 +1,15 @@
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from blacklist.models import BlackList
 from comments.models import Comment
 from follows.models import Follow
 from likes.models import Like
 from profiles.models import Profile
 from reels.models import Reel, ReelView
 from reels.schemas import ReelCreate, ReelWatchUpdate
+from saved.models import SavedReel
 from users.permissions import can_view_content
 
 
@@ -21,6 +24,13 @@ def is_reel_liked(reels_id: int, db: Session, user_id: int):
     return db.query(Like).filter(
         Like.reels_id == reels_id,
         Like.user_id == user_id,
+    ).first() is not None
+
+
+def is_reel_saved(reels_id: int, db: Session, user_id: int):
+    return db.query(SavedReel).filter(
+        SavedReel.reels_id == reels_id,
+        SavedReel.user_id == user_id,
     ).first() is not None
 
 
@@ -47,6 +57,7 @@ def get_reel_data(reel: Reel, db: Session, current_user_id: int):
         "likes_count": counts["likes_count"],
         "comments_count": counts["comments_count"],
         "is_liked": is_reel_liked(reel.id, db, current_user_id),
+        "is_saved": is_reel_saved(reel.id, db, current_user_id),
         "created_at": reel.created_at,
         "user": get_reel_user_data(reel),
     }
@@ -69,6 +80,23 @@ def get_following_ids(db: Session, user_id: int):
             Follow.is_accepted == True,
         ).all()
     ]
+
+
+def get_blocked_user_ids(db: Session, user_id: int):
+    blocked_rows = db.query(BlackList).filter(
+        (BlackList.blocker_id == user_id) |
+        (BlackList.blocked_id == user_id),
+    ).all()
+
+    blocked_user_ids = []
+
+    for blocked_row in blocked_rows:
+        if blocked_row.blocker_id == user_id:
+            blocked_user_ids.append(blocked_row.blocked_id)
+        else:
+            blocked_user_ids.append(blocked_row.blocker_id)
+
+    return blocked_user_ids
 
 
 def create_reel(data: ReelCreate, db: Session, user_id: int):
@@ -109,12 +137,25 @@ def get_user_reels(db: Session, user_id: int, limit: int = 20, offset: int = 0, 
 
 
 def get_feed_reels(db: Session, user_id: int, limit: int = 10, offset: int = 0):
-    feed_user_ids = get_following_ids(db, user_id)
-    feed_user_ids.append(user_id)
+    following_ids = get_following_ids(db, user_id)
+    blocked_user_ids = get_blocked_user_ids(db, user_id)
+    visibility_filters = [
+        Reel.user_id == user_id,
+        Profile.is_private == False,
+    ]
 
-    reels = db.query(Reel).filter(
-        Reel.user_id.in_(feed_user_ids),
-    ).order_by(Reel.created_at.desc()).offset(offset).limit(limit + 1).all()
+    if following_ids:
+        visibility_filters.append(Reel.user_id.in_(following_ids))
+
+    query = db.query(Reel).join(
+        Profile,
+        Profile.user_id == Reel.user_id,
+    ).filter(or_(*visibility_filters))
+
+    if blocked_user_ids:
+        query = query.filter(Reel.user_id.notin_(blocked_user_ids))
+
+    reels = query.order_by(Reel.created_at.desc()).offset(offset).limit(limit + 1).all()
 
     has_next = len(reels) > limit
     reels = reels[:limit]
@@ -203,6 +244,7 @@ def delete_reel(reels_id: int, db: Session, user_id: int):
         db.query(Like).filter(Like.comment_id.in_(comment_ids)).delete(synchronize_session=False)
 
     db.query(Like).filter(Like.reels_id == reels_id).delete(synchronize_session=False)
+    db.query(SavedReel).filter(SavedReel.reels_id == reels_id).delete(synchronize_session=False)
     db.query(Comment).filter(Comment.reels_id == reels_id).delete(synchronize_session=False)
     db.query(ReelView).filter(ReelView.reels_id == reels_id).delete(synchronize_session=False)
 

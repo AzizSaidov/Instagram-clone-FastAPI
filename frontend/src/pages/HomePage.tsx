@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { deletePost, deleteStory, getPost, getPostViewers } from '../api/feed'
+import {
+  deletePost,
+  deleteStory,
+  getPost,
+  getPostViewers,
+  sharePostToStory,
+} from '../api/feed'
+import { getPostLikeUsers } from '../api/likes'
 import { followProfile, getProfileRecommendations } from '../api/profiles'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { useFeedStore } from '../store/feedStore'
@@ -122,6 +129,7 @@ function EmptyFeed() {
 export function HomePage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [viewersPost, setViewersPost] = useState<Post | null>(null)
+  const [likesPost, setLikesPost] = useState<Post | null>(null)
   const [storyViewerIndex, setStoryViewerIndex] = useState<number | null>(null)
   const posts = useFeedStore((state) => state.posts)
   const isLoading = useFeedStore((state) => state.isLoading)
@@ -221,6 +229,11 @@ export function HomePage() {
     setSelectedPost((post) => (post?.id === postId ? null : post))
   }
 
+  async function handleSharePostToStory(postId: number) {
+    await sharePostToStory(postId)
+    await loadStories()
+  }
+
   return (
     <main className="mx-auto flex min-h-[calc(100svh+120px)] w-full max-w-[1000px] gap-14 px-4 pb-28 pt-5 sm:px-8">
       <section className="mx-auto w-full max-w-[560px]">
@@ -246,8 +259,10 @@ export function HomePage() {
               post={post}
               onLike={(postId) => void toggleLike(postId)}
               onOpen={(post) => void handleOpenPost(post)}
+              onOpenLikes={setLikesPost}
               onOpenViewers={setViewersPost}
               onSave={(postId) => void toggleSaved(postId)}
+              onShareToStory={handleSharePostToStory}
               onViewed={(postId) => void markViewed(postId)}
               onDelete={handleDeletePost}
             />
@@ -267,14 +282,24 @@ export function HomePage() {
             setSelectedPost(post)
           }}
           onSave={(postId) => void handleModalSave(postId)}
+          onShareToStory={handleSharePostToStory}
           onDelete={handleDeletePost}
         />
       )}
       {viewersPost && (
         <ViewersModal
           title="Просмотры"
+          viewerKey={viewersPost.id}
           loadViewers={() => getPostViewers(viewersPost.id)}
           onClose={() => setViewersPost(null)}
+        />
+      )}
+      {likesPost && (
+        <ViewersModal
+          title="Лайки публикации"
+          viewerKey={likesPost.id}
+          loadViewers={() => getPostLikeUsers(likesPost.id)}
+          onClose={() => setLikesPost(null)}
         />
       )}
       {storyViewerIndex !== null && storyGroups[storyViewerIndex] && (

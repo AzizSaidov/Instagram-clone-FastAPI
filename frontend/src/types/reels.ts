@@ -10,6 +10,7 @@ export interface Reel {
   likes_count: number
   comments_count: number
   is_liked: boolean
+  is_saved: boolean
   created_at: string
   user: PostUser
 }
@@ -34,6 +35,8 @@ export interface Comment {
   post_id: number | null
   reels_id: number | null
   text: string
+  likes_count: number
+  is_liked: boolean
   created_at: string
   user: PostUser
 }

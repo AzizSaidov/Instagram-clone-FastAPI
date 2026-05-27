@@ -37,13 +37,29 @@ groups_router = APIRouter(prefix="/groups", tags=["Groups"])
 
 GROUP_MESSAGES_MEDIA_DIR = Path("media/group_messages")
 ALLOWED_GROUP_MESSAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "video/mp4"]
+GROUP_AVATARS_MEDIA_DIR = Path("media/group_avatars")
+ALLOWED_GROUP_AVATAR_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+
+def upload_extension(file: UploadFile):
+    extension = Path(file.filename or "").suffix.lower()
+    if extension:
+        return extension
+
+    return {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "video/mp4": ".mp4",
+    }.get(file.content_type, "")
 
 
 def save_group_message_file(file: UploadFile):
     if file.content_type not in ALLOWED_GROUP_MESSAGE_MEDIA_TYPES:
         raise HTTPException(status_code=400, detail="Invalid media type")
 
-    file_extension = Path(file.filename).suffix
+    GROUP_MESSAGES_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    file_extension = upload_extension(file)
     file_name = f"{uuid4()}{file_extension}"
     file_path = GROUP_MESSAGES_MEDIA_DIR / file_name
 
@@ -51,6 +67,21 @@ def save_group_message_file(file: UploadFile):
         media_file.write(file.file.read())
 
     return f"/media/group_messages/{file_name}"
+
+
+def save_group_avatar_file(file: UploadFile):
+    if file.content_type not in ALLOWED_GROUP_AVATAR_MEDIA_TYPES:
+        raise HTTPException(status_code=400, detail="Invalid avatar media type")
+
+    GROUP_AVATARS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    file_extension = upload_extension(file)
+    file_name = f"{uuid4()}{file_extension}"
+    file_path = GROUP_AVATARS_MEDIA_DIR / file_name
+
+    with open(file_path, "wb") as media_file:
+        media_file.write(file.file.read())
+
+    return f"/media/group_avatars/{file_name}"
 
 
 @groups_router.post("/", response_model=GroupResponse, status_code=201)
@@ -70,6 +101,18 @@ def group_detail(group_id: int, db: Session = Depends(get_db), current_user: Use
 
 @groups_router.put("/{group_id}/", response_model=GroupResponse)
 def update_my_group(group_id: int, data: GroupUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return update_group(group_id, data, db, current_user.id)
+
+
+@groups_router.post("/{group_id}/avatar/", response_model=GroupResponse)
+def upload_group_avatar(
+    group_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    avatar_url = save_group_avatar_file(file)
+    data = GroupUpdate(avatar_url=avatar_url)
     return update_group(group_id, data, db, current_user.id)
 
 

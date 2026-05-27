@@ -19,7 +19,7 @@ from notifications.models import Notification
 from posts.models import Post, PostMedia, PostView
 from profiles.models import Profile
 from reels.models import Reel, ReelView
-from saved.models import SavedPost
+from saved.models import SavedPost, SavedReel
 from stories.models import Story, StoryView
 from users.auth import hash_password
 from users.models import User
@@ -27,89 +27,235 @@ from utils import get_dushanbe_time
 
 
 PASSWORD = "Social2026!"
-CLEANUP_PREFIXES = ("demo_", "codex")
-
-PLACEHOLDER_PROFILE_OVERRIDES = {
-    "noname": {
-        "username": "aziz.saidov",
-        "fallback_username": "aziz.daily",
-        "full_name": "Aziz Saidov",
-        "bio": "Quiet interiors, short reels, and saved city corners.",
-        "avatar": "https://i.pravatar.cc/180?img=68",
-        "note": "Editing today",
-    },
-    "noname2": {
-        "username": "laylo.design",
-        "fallback_username": "laylo.photos",
-        "full_name": "Laylo Design",
-        "bio": "Photos, coffee stops, and weekend plans.",
-        "avatar": "https://i.pravatar.cc/180?img=19",
-        "note": "Studio later",
-    },
-}
+SEED_PHONE_PREFIX = "+155509"
+LEGACY_SEED_PHONE_NUMBERS = tuple(f"+155501020{index}" for index in range(1, 7))
 
 PEOPLE = [
     {
         "username": "amelia.hart",
-        "phone_number": "+1555010201",
+        "phone_number": "+1555090001",
         "full_name": "Amelia Hart",
         "bio": "Coffee walks, small rooms, and weekend frames.",
         "avatar": "https://i.pravatar.cc/180?img=47",
+        "note": "Coffee walk",
     },
     {
         "username": "oliver.stone",
-        "phone_number": "+1555010202",
+        "phone_number": "+1555090002",
         "full_name": "Oliver Stone",
         "bio": "Street photos and short motion edits.",
         "avatar": "https://i.pravatar.cc/180?img=12",
+        "note": "New cut soon",
     },
     {
         "username": "mia.carter",
-        "phone_number": "+1555010203",
+        "phone_number": "+1555090003",
         "full_name": "Mia Carter",
         "bio": "Interior details, plants, light.",
         "avatar": "https://i.pravatar.cc/180?img=32",
+        "note": "Studio day",
     },
     {
         "username": "noah.bennett",
-        "phone_number": "+1555010204",
+        "phone_number": "+1555090004",
         "full_name": "Noah Bennett",
         "bio": "City corners, food stops, train windows.",
         "avatar": "https://i.pravatar.cc/180?img=15",
+        "note": "On the train",
     },
     {
         "username": "sophia.reed",
-        "phone_number": "+1555010205",
+        "phone_number": "+1555090005",
         "full_name": "Sophia Reed",
         "bio": "Design notes and places worth saving.",
         "avatar": "https://i.pravatar.cc/180?img=26",
+        "note": "Saving ideas",
+        "is_private": True,
     },
     {
         "username": "ethan.miles",
-        "phone_number": "+1555010206",
+        "phone_number": "+1555090006",
         "full_name": "Ethan Miles",
         "bio": "Weekend hikes and quiet videos.",
         "avatar": "https://i.pravatar.cc/180?img=59",
+        "note": "Trail morning",
+    },
+    {
+        "username": "harper.lane",
+        "phone_number": "+1555090007",
+        "full_name": "Harper Lane",
+        "bio": "Film scans, recipes, and slow weekends.",
+        "avatar": "https://i.pravatar.cc/180?img=5",
+        "note": "Film roll",
+    },
+    {
+        "username": "lucas.gray",
+        "phone_number": "+1555090008",
+        "full_name": "Lucas Gray",
+        "bio": "Architecture, shadows, and city grids.",
+        "avatar": "https://i.pravatar.cc/180?img=53",
+        "note": "Late walk",
+    },
+    {
+        "username": "ava.wilson",
+        "phone_number": "+1555090009",
+        "full_name": "Ava Wilson",
+        "bio": "Tables, flowers, markets, and daily color.",
+        "avatar": "https://i.pravatar.cc/180?img=44",
+        "note": "Market run",
+    },
+    {
+        "username": "liam.parker",
+        "phone_number": "+1555090010",
+        "full_name": "Liam Parker",
+        "bio": "Outdoor notes and tiny travel reels.",
+        "avatar": "https://i.pravatar.cc/180?img=60",
+        "note": "Packing light",
+    },
+    {
+        "username": "ella.brooks",
+        "phone_number": "+1555090011",
+        "full_name": "Ella Brooks",
+        "bio": "Muted palettes, galleries, and good coffee.",
+        "avatar": "https://i.pravatar.cc/180?img=29",
+        "note": "Gallery later",
+    },
+    {
+        "username": "james.foster",
+        "phone_number": "+1555090012",
+        "full_name": "James Foster",
+        "bio": "Short clips from long walks.",
+        "avatar": "https://i.pravatar.cc/180?img=8",
+        "note": "Route saved",
+        "is_private": True,
+    },
+    {
+        "username": "grace.evans",
+        "phone_number": "+1555090013",
+        "full_name": "Grace Evans",
+        "bio": "Books, brunch, and city mornings.",
+        "avatar": "https://i.pravatar.cc/180?img=49",
+        "note": "Brunch table",
+    },
+    {
+        "username": "henry.cooper",
+        "phone_number": "+1555090014",
+        "full_name": "Henry Cooper",
+        "bio": "Night streets and soft neon.",
+        "avatar": "https://i.pravatar.cc/180?img=14",
+        "note": "Night edit",
+    },
+    {
+        "username": "chloe.price",
+        "phone_number": "+1555090015",
+        "full_name": "Chloe Price",
+        "bio": "Plants, kitchens, and weekend hosting.",
+        "avatar": "https://i.pravatar.cc/180?img=38",
+        "note": "Hosting soon",
+    },
+    {
+        "username": "mason.rivera",
+        "phone_number": "+1555090016",
+        "full_name": "Mason Rivera",
+        "bio": "Train rides, sketches, and everyday scenes.",
+        "avatar": "https://i.pravatar.cc/180?img=52",
+        "note": "Sketch break",
+    },
+    {
+        "username": "lily.hughes",
+        "phone_number": "+1555090017",
+        "full_name": "Lily Hughes",
+        "bio": "Light, linen, and quiet homes.",
+        "avatar": "https://i.pravatar.cc/180?img=23",
+        "note": "Soft light",
+    },
+    {
+        "username": "ben.walker",
+        "phone_number": "+1555090018",
+        "full_name": "Ben Walker",
+        "bio": "Food stops and tiny travel guides.",
+        "avatar": "https://i.pravatar.cc/180?img=61",
+        "note": "Food map",
+        "is_private": True,
+    },
+    {
+        "username": "nora.kelly",
+        "phone_number": "+1555090019",
+        "full_name": "Nora Kelly",
+        "bio": "Ceramics, windows, and quiet tables.",
+        "avatar": "https://i.pravatar.cc/180?img=41",
+        "note": "Clay day",
+    },
+    {
+        "username": "owen.king",
+        "phone_number": "+1555090020",
+        "full_name": "Owen King",
+        "bio": "Skate clips and wide streets.",
+        "avatar": "https://i.pravatar.cc/180?img=11",
+        "note": "Skate spot",
+    },
+    {
+        "username": "zoe.morgan",
+        "phone_number": "+1555090021",
+        "full_name": "Zoe Morgan",
+        "bio": "Bookstores, posters, and corner seats.",
+        "avatar": "https://i.pravatar.cc/180?img=31",
+        "note": "Book hunt",
+    },
+    {
+        "username": "leo.bailey",
+        "phone_number": "+1555090022",
+        "full_name": "Leo Bailey",
+        "bio": "Tiny kitchens and lunch videos.",
+        "avatar": "https://i.pravatar.cc/180?img=17",
+        "note": "Lunch edit",
+    },
+    {
+        "username": "ruby.scott",
+        "phone_number": "+1555090023",
+        "full_name": "Ruby Scott",
+        "bio": "Flowers, fabric, and soft color.",
+        "avatar": "https://i.pravatar.cc/180?img=36",
+        "note": "Color test",
+    },
+    {
+        "username": "theo.ward",
+        "phone_number": "+1555090024",
+        "full_name": "Theo Ward",
+        "bio": "Museum days and long walks.",
+        "avatar": "https://i.pravatar.cc/180?img=56",
+        "note": "Museum day",
     },
 ]
 
+SEED_USERNAMES = {person["username"] for person in PEOPLE}
+
 IMAGE_URLS = [
-    "https://picsum.photos/seed/cafe-light-2026/1080/1080",
-    "https://picsum.photos/seed/studio-desk-2026/1080/1080",
-    "https://picsum.photos/seed/city-evening-2026/1080/1080",
-    "https://picsum.photos/seed/interior-green-2026/1080/1080",
-    "https://picsum.photos/seed/weekend-road-2026/1080/1080",
-    "https://picsum.photos/seed/gallery-corner-2026/1080/1080",
-    "https://picsum.photos/seed/coffee-window-2026/1080/1080",
-    "https://picsum.photos/seed/minimal-room-2026/1080/1080",
-    "https://picsum.photos/seed/night-street-2026/1080/1080",
-    "https://picsum.photos/seed/brunch-table-2026/1080/1080",
+    f"https://picsum.photos/seed/instagram-web-seed-{index:02d}/1080/1080"
+    for index in range(1, 141)
 ]
 
 VIDEO_URLS = [
     "https://media.w3.org/2010/05/bunny/trailer.mp4",
     "https://media.w3.org/2010/05/sintel/trailer.mp4",
     "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    "https://filesamples.com/samples/video/mp4/sample_640x360.mp4",
+    "https://filesamples.com/samples/video/mp4/sample_960x400_ocean_with_audio.mp4",
+    "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
+    "https://samplelib.com/lib/preview/mp4/sample-10s.mp4",
+    "https://samplelib.com/lib/preview/mp4/sample-15s.mp4",
+    "https://samplelib.com/lib/preview/mp4/sample-20s.mp4",
+    "https://samplelib.com/lib/preview/mp4/sample-30s.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+    "https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
 ]
 
 POSTS = [
@@ -123,61 +269,125 @@ POSTS = [
     ("Clean lines, warm light, good mood.", "#interiordesign #homestyle"),
     ("The best streets are the ones you find by accident.", "#nightwalk #city"),
     ("Brunch table looked too good not to post.", "#brunch #food #friends"),
+    ("A corner table, two notebooks, and a perfect playlist.", "#dailyphoto #notes"),
+    ("Market flowers that changed the whole room.", "#flowers #market #color"),
+    ("Train window light made everything cinematic.", "#travel #train #light"),
+    ("A small gallery wall with a very patient friend.", "#art #weekend"),
+    ("Kitchen reset before everyone arrives.", "#home #hosting"),
+    ("Sketches from a slow afternoon.", "#sketchbook #creative"),
+    ("Muted linen and the softest morning light.", "#homedecor #softlight"),
+    ("A food map disguised as a weekend walk.", "#foodspots #cityguide"),
 ]
 
 REELS = [
     ("Tiny motion diary from the weekend.", "#reels #weekend"),
     ("A few seconds of city noise.", "#streetvideo #city"),
     ("Slow morning, quick edit.", "#morningroutine #shortvideo"),
+    ("Coffee steam and a window seat.", "#cafevideo #daily"),
+    ("Gallery hallway in three quick cuts.", "#gallery #motion"),
+    ("A road clip from the best part of the drive.", "#travelreel #outdoors"),
+    ("Market color in motion.", "#market #colorstory"),
+    ("Night lights before heading home.", "#nightreel #city"),
+    ("Desk reset in under ten seconds.", "#workspace #reset"),
+    ("Train ride, soft focus.", "#train #travelvideo"),
 ]
 
-OWN_POST = (
-    "A clean corner that finally felt finished.",
-    "#home #interiordetails #softlight",
-)
-OWN_REEL = (
-    "A few seconds from the evening walk.",
-    "#eveningwalk #reels",
-)
-OWN_POST_VARIANTS = [
-    ("A clean corner that finally felt finished.", "#home #interiordetails #softlight", [7, 3]),
-    ("Late afternoon edits and a quiet room.", "#editing #workspace #softlight", [1, 5]),
-    ("Coffee, notes, and a small reset.", "#coffee #dailyphoto #slowday", [9, 0]),
-    ("A city walk saved for later.", "#citywalk #photojournal #evening", [2, 8]),
+COMMENT_TEXTS = [
+    "This frame feels so good.",
+    "The colors are perfect here.",
+    "Saving this for later.",
+    "Love the pacing.",
+    "This looks calm and real.",
+    "That light is doing all the work.",
+    "Such a good little moment.",
+    "Need this on my weekend list.",
 ]
-OWN_REEL_VARIANTS = [
-    ("A few seconds from the evening walk.", "#eveningwalk #reels", 1),
-    ("Quick desk reset before posting.", "#desksetup #shortvideo", 2),
-    ("Tiny city motion diary.", "#city #reels", 0),
+
+DIRECT_THREADS = [
+    (0, 1, ["That cafe photo is perfect.", "Thanks, posting a reel later."]),
+    (2, 4, ["Can you send the palette from today?", "Yes, I saved three options."]),
+    (5, 9, ["Trail looked peaceful.", "It was quiet until the wind picked up."]),
+    (7, 13, ["Night edits are getting better.", "The neon helped a lot."]),
+    (8, 14, ["Market flowers tomorrow?", "Absolutely, early is best."]),
+    (10, 12, ["Gallery first or brunch first?", "Gallery, then brunch."]),
 ]
-GROUP_NAMES = [
-    "Weekend Plans",
-    "Studio Notes",
-    "Coffee Walks",
-    "Photo Club",
-    "City Edits",
-    "Travel Ideas",
+
+GROUPS = [
+    {
+        "owner": 2,
+        "name": "Studio Notes",
+        "avatar": IMAGE_URLS[4],
+        "members": [2, 4, 10, 16],
+        "messages": [
+            "I added the new palette to the board.",
+            "Looks warmer already.",
+        ],
+    },
+    {
+        "owner": 3,
+        "name": "Coffee Walks",
+        "avatar": IMAGE_URLS[10],
+        "members": [0, 1, 3, 6, 12],
+        "messages": [
+            "Saturday coffee first, then the gallery?",
+            "Perfect, I will bring the camera.",
+        ],
+    },
+    {
+        "owner": 9,
+        "name": "Travel Ideas",
+        "avatar": IMAGE_URLS[17],
+        "members": [5, 9, 11, 15, 17],
+        "messages": [
+            "Road trip folder is ready.",
+            "Add the train route too.",
+        ],
+    },
+    {
+        "owner": 13,
+        "name": "Night Edits",
+        "avatar": IMAGE_URLS[25],
+        "members": [1, 7, 13, 15],
+        "messages": [
+            "The neon reel needs one more cut.",
+            "Try the slower opening.",
+        ],
+    },
 ]
 
 
-def get_owned_content_ids(db, user_ids: list[int]) -> tuple[list[int], list[int], list[int], list[int], list[int], list[int]]:
-    post_ids = [post_id for (post_id,) in db.query(Post.id).filter(Post.user_id.in_(user_ids)).all()]
-    reel_ids = [reel_id for (reel_id,) in db.query(Reel.id).filter(Reel.user_id.in_(user_ids)).all()]
-    story_ids = [story_id for (story_id,) in db.query(Story.id).filter(Story.user_id.in_(user_ids)).all()]
+def get_owned_content_ids(
+    db,
+    user_ids: list[int],
+) -> tuple[list[int], list[int], list[int], list[int], list[int], list[int]]:
+    post_ids = [
+        post_id
+        for (post_id,) in db.query(Post.id).filter(Post.user_id.in_(user_ids)).all()
+    ]
+    reel_ids = [
+        reel_id
+        for (reel_id,) in db.query(Reel.id).filter(Reel.user_id.in_(user_ids)).all()
+    ]
+    story_ids = [
+        story_id
+        for (story_id,) in db.query(Story.id).filter(Story.user_id.in_(user_ids)).all()
+    ]
     comment_ids = [
         comment_id
         for (comment_id,) in db.query(Comment.id).filter(
-            (Comment.user_id.in_(user_ids)) |
-            (Comment.post_id.in_(post_ids) if post_ids else False) |
-            (Comment.reels_id.in_(reel_ids) if reel_ids else False)
+            (Comment.user_id.in_(user_ids))
+            | (Comment.post_id.in_(post_ids) if post_ids else False)
+            | (Comment.reels_id.in_(reel_ids) if reel_ids else False),
         ).all()
     ]
-    group_ids = [group_id for (group_id,) in db.query(Group.id).filter(Group.owner_id.in_(user_ids)).all()]
+    group_ids = [
+        group_id
+        for (group_id,) in db.query(Group.id).filter(Group.owner_id.in_(user_ids)).all()
+    ]
     chat_ids = [
         chat_id
         for (chat_id,) in db.query(Chat.id).filter(
-            (Chat.user_id_1.in_(user_ids)) |
-            (Chat.user_id_2.in_(user_ids))
+            (Chat.user_id_1.in_(user_ids)) | (Chat.user_id_2.in_(user_ids)),
         ).all()
     ]
 
@@ -188,14 +398,16 @@ def cleanup_activity_for_users(db, user_ids: list[int], delete_accounts: bool) -
     if not user_ids:
         return
 
-    post_ids, reel_ids, story_ids, comment_ids, group_ids, chat_ids = get_owned_content_ids(db, user_ids)
+    post_ids, reel_ids, story_ids, comment_ids, group_ids, chat_ids = (
+        get_owned_content_ids(db, user_ids)
+    )
 
     db.query(Notification).filter(
-        (Notification.to_user_id.in_(user_ids)) |
-        (Notification.from_user_id.in_(user_ids)) |
-        (Notification.post_id.in_(post_ids) if post_ids else False) |
-        (Notification.reels_id.in_(reel_ids) if reel_ids else False) |
-        (Notification.comment_id.in_(comment_ids) if comment_ids else False)
+        (Notification.to_user_id.in_(user_ids))
+        | (Notification.from_user_id.in_(user_ids))
+        | (Notification.post_id.in_(post_ids) if post_ids else False)
+        | (Notification.reels_id.in_(reel_ids) if reel_ids else False)
+        | (Notification.comment_id.in_(comment_ids) if comment_ids else False),
     ).delete(synchronize_session=False)
 
     if comment_ids:
@@ -206,6 +418,7 @@ def cleanup_activity_for_users(db, user_ids: list[int], delete_accounts: bool) -
         db.query(PostView).filter(PostView.post_id.in_(post_ids)).delete(synchronize_session=False)
         db.query(PostMedia).filter(PostMedia.post_id.in_(post_ids)).delete(synchronize_session=False)
     if reel_ids:
+        db.query(SavedReel).filter(SavedReel.reels_id.in_(reel_ids)).delete(synchronize_session=False)
         db.query(Like).filter(Like.reels_id.in_(reel_ids)).delete(synchronize_session=False)
         db.query(ReelView).filter(ReelView.reels_id.in_(reel_ids)).delete(synchronize_session=False)
     if story_ids:
@@ -224,13 +437,13 @@ def cleanup_activity_for_users(db, user_ids: list[int], delete_accounts: bool) -
     db.query(GroupMessage).filter(GroupMessage.sender_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(GroupMember).filter(GroupMember.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(SavedPost).filter(SavedPost.user_id.in_(user_ids)).delete(synchronize_session=False)
+    db.query(SavedReel).filter(SavedReel.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(Like).filter(Like.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(StoryView).filter(StoryView.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(ReelView).filter(ReelView.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(PostView).filter(PostView.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(Follow).filter(
-        (Follow.follower_id.in_(user_ids)) |
-        (Follow.following_id.in_(user_ids))
+        (Follow.follower_id.in_(user_ids)) | (Follow.following_id.in_(user_ids)),
     ).delete(synchronize_session=False)
     db.query(Note).filter(Note.user_id.in_(user_ids)).delete(synchronize_session=False)
     db.query(Story).filter(Story.user_id.in_(user_ids)).delete(synchronize_session=False)
@@ -242,27 +455,34 @@ def cleanup_activity_for_users(db, user_ids: list[int], delete_accounts: bool) -
         db.query(User).filter(User.id.in_(user_ids)).delete(synchronize_session=False)
 
 
-def cleanup_old_test_data(db) -> None:
-    profiles = db.query(Profile).filter(
-        Profile.username.like("demo_%") |
-        Profile.username.like("codex%")
+def cleanup_seed_accounts(db) -> None:
+    profiles = db.query(Profile).join(User, User.id == Profile.user_id).filter(
+        (Profile.username.in_(SEED_USERNAMES))
+        | Profile.username.like("demo_%")
+        | Profile.username.like("codex%")
+        | User.phone_number.like(f"{SEED_PHONE_PREFIX}%")
+        | User.phone_number.in_(LEGACY_SEED_PHONE_NUMBERS),
     ).all()
     user_ids = [profile.user_id for profile in profiles]
 
     cleanup_activity_for_users(db, user_ids, delete_accounts=True)
 
 
-def get_or_create_user(db, person: dict) -> User:
-    profile = db.query(Profile).filter(Profile.username == person["username"]).first()
+def unique_seed_username(db, preferred: str, user_id: int) -> str:
+    profile = db.query(Profile).filter(Profile.username == preferred).first()
+    if profile is None or profile.user_id == user_id:
+        return preferred
 
-    if profile:
-        user = db.query(User).filter(User.id == profile.user_id).first()
-        profile.full_name = person["full_name"]
-        profile.bio = person["bio"]
-        profile.avatar_url = person["avatar"]
-        profile.is_private = False
-        return user
+    base = preferred.replace(".", "_")
+    for suffix in range(2, 100):
+        candidate = f"seed_{base}_{suffix}"
+        if db.query(Profile).filter(Profile.username == candidate).first() is None:
+            return candidate
 
+    return f"seed_{base}_{user_id}"
+
+
+def create_seed_user(db, person: dict) -> User:
     user = User(
         phone_number=person["phone_number"],
         hashed_password=hash_password(PASSWORD),
@@ -270,49 +490,19 @@ def get_or_create_user(db, person: dict) -> User:
     db.add(user)
     db.flush()
 
-    user.profile = Profile(
+    profile = Profile(
         user_id=user.id,
-        username=person["username"],
+        username=unique_seed_username(db, person["username"], user.id),
         full_name=person["full_name"],
         bio=person["bio"],
         avatar_url=person["avatar"],
-        is_private=False,
+        is_private=person.get("is_private", False),
     )
-    db.add(user.profile)
+    user.profile = profile
+    db.add(profile)
     db.flush()
 
     return user
-
-
-def polish_placeholder_profiles(db) -> list[User]:
-    profiles = db.query(Profile).filter(Profile.username.in_(PLACEHOLDER_PROFILE_OVERRIDES.keys())).all()
-    user_ids = [profile.user_id for profile in profiles]
-    cleanup_activity_for_users(db, user_ids, delete_accounts=False)
-
-    polished_users = []
-    for profile in profiles:
-        override = PLACEHOLDER_PROFILE_OVERRIDES[profile.username]
-        target_username = override["username"]
-        existing_target = db.query(Profile).filter(Profile.username == target_username).first()
-
-        if existing_target is not None and existing_target.user_id != profile.user_id:
-            fallback_username = override.get("fallback_username", f"{target_username}.{profile.user_id}")
-            fallback_target = db.query(Profile).filter(Profile.username == fallback_username).first()
-            target_username = fallback_username if fallback_target is None else f"{fallback_username}.{profile.user_id}"
-
-        profile.username = target_username
-
-        profile.full_name = override["full_name"]
-        profile.bio = override["bio"]
-        profile.avatar_url = override["avatar"]
-
-        user = db.query(User).filter(User.id == profile.user_id).first()
-        if user:
-            polished_users.append(user)
-            ensure_note(db, user, override["note"])
-
-    db.flush()
-    return polished_users
 
 
 def ensure_follow(db, follower: User, following: User, accepted: bool = True) -> None:
@@ -325,159 +515,136 @@ def ensure_follow(db, follower: User, following: User, accepted: bool = True) ->
     ).first()
 
     if follow is None:
-        db.add(Follow(follower_id=follower.id, following_id=following.id, is_accepted=accepted))
+        db.add(
+            Follow(
+                follower_id=follower.id,
+                following_id=following.id,
+                is_accepted=accepted,
+            ),
+        )
     else:
         follow.is_accepted = accepted
 
 
-def ensure_post(db, user: User, description: str, hashtag: str, media_items: list[str]) -> Post:
-    post = db.query(Post).filter(
-        Post.user_id == user.id,
-        Post.description == description,
-    ).first()
+def ensure_post(
+    db,
+    user: User,
+    description: str,
+    hashtag: str,
+    media_items: list[str],
+    created_minutes_ago: int,
+) -> Post:
+    post = Post(
+        user_id=user.id,
+        description=description,
+        hashtag=hashtag,
+        views_count=0,
+        created_at=get_dushanbe_time() - timedelta(minutes=created_minutes_ago),
+    )
+    db.add(post)
+    db.flush()
 
-    if post is None:
-        post = Post(user_id=user.id, description=description, hashtag=hashtag, views_count=0)
-        db.add(post)
-        db.flush()
-        for index, item in enumerate(media_items):
-            db.add(PostMedia(post_id=post.id, media_url=item, order_index=index))
-    else:
-        post.hashtag = hashtag
+    for index, item in enumerate(media_items):
+        db.add(PostMedia(post_id=post.id, media_url=item, order_index=index))
 
     return post
 
 
-def ensure_reel(db, user: User, description: str, hashtag: str, video_url: str) -> Reel:
-    reel = db.query(Reel).filter(
-        Reel.user_id == user.id,
-        Reel.description == description,
-    ).first()
-
-    if reel is None:
-        reel = Reel(user_id=user.id, video_url=video_url, description=description, hashtag=hashtag)
-        db.add(reel)
-    else:
-        reel.video_url = video_url
-        reel.hashtag = hashtag
+def ensure_reel(
+    db,
+    user: User,
+    description: str,
+    hashtag: str,
+    video_url: str,
+    created_minutes_ago: int,
+) -> Reel:
+    reel = Reel(
+        user_id=user.id,
+        video_url=video_url,
+        description=description,
+        hashtag=hashtag,
+        views_count=0,
+        created_at=get_dushanbe_time() - timedelta(minutes=created_minutes_ago),
+    )
+    db.add(reel)
+    db.flush()
 
     return reel
 
 
-def ensure_context_post(db, user: User) -> Post:
-    description, hashtag, media_indexes = OWN_POST_VARIANTS[user.id % len(OWN_POST_VARIANTS)]
-    media_items = [IMAGE_URLS[index] for index in media_indexes]
-    legacy_post = db.query(Post).filter(
-        Post.user_id == user.id,
-        Post.description == OWN_POST[0],
-    ).first()
+def ensure_story(db, user: User, media_url: str) -> Story:
+    story = Story(
+        user_id=user.id,
+        media_url=media_url,
+        expires_at=get_dushanbe_time() + timedelta(hours=24),
+        views_count=0,
+    )
+    db.add(story)
+    db.flush()
 
-    if legacy_post and legacy_post.description != description:
-        legacy_post.description = description
-        legacy_post.hashtag = hashtag
-        db.query(PostMedia).filter(PostMedia.post_id == legacy_post.id).delete(synchronize_session=False)
-        db.flush()
-        for index, item in enumerate(media_items):
-            db.add(PostMedia(post_id=legacy_post.id, media_url=item, order_index=index))
-
-        return legacy_post
-
-    return ensure_post(db, user, description, hashtag, media_items)
-
-
-def ensure_context_reel(db, user: User) -> Reel:
-    description, hashtag, video_index = OWN_REEL_VARIANTS[user.id % len(OWN_REEL_VARIANTS)]
-    video_url = VIDEO_URLS[video_index]
-    legacy_reel = db.query(Reel).filter(
-        Reel.user_id == user.id,
-        Reel.description == OWN_REEL[0],
-    ).first()
-
-    if legacy_reel and legacy_reel.description != description:
-        legacy_reel.description = description
-        legacy_reel.hashtag = hashtag
-        legacy_reel.video_url = video_url
-        return legacy_reel
-
-    return ensure_reel(db, user, description, hashtag, video_url)
-
-
-def ensure_story(db, user: User, media_url: str) -> None:
-    story = db.query(Story).filter(Story.user_id == user.id, Story.media_url == media_url).first()
-    expires_at = get_dushanbe_time() + timedelta(hours=24)
-
-    if story is None:
-        db.add(Story(user_id=user.id, media_url=media_url, expires_at=expires_at))
-    else:
-        story.expires_at = expires_at
+    return story
 
 
 def ensure_note(db, user: User, text: str) -> None:
-    note = db.query(Note).filter(Note.user_id == user.id, Note.text == text).first()
-    if note is None:
-        db.add(Note(user_id=user.id, text=text, expires_at=get_dushanbe_time() + timedelta(hours=24)))
-
-
-def ensure_comment(db, user: User, text: str, post: Post | None = None, reel: Reel | None = None) -> Comment:
-    comment = db.query(Comment).filter(
-        Comment.user_id == user.id,
-        Comment.text == text,
-        Comment.post_id == (post.id if post else None),
-        Comment.reels_id == (reel.id if reel else None),
-    ).first()
-
-    if comment is None:
-        comment = Comment(
+    db.add(
+        Note(
             user_id=user.id,
             text=text,
-            post_id=post.id if post else None,
-            reels_id=reel.id if reel else None,
-        )
-        db.add(comment)
-        db.flush()
+            expires_at=get_dushanbe_time() + timedelta(hours=24),
+        ),
+    )
+
+
+def ensure_comment(
+    db,
+    user: User,
+    text: str,
+    post: Post | None = None,
+    reel: Reel | None = None,
+) -> Comment:
+    comment = Comment(
+        user_id=user.id,
+        text=text,
+        post_id=post.id if post else None,
+        reels_id=reel.id if reel else None,
+    )
+    db.add(comment)
+    db.flush()
 
     return comment
 
 
-def ensure_like(db, user: User, post: Post | None = None, reel: Reel | None = None, comment: Comment | None = None) -> None:
-    query = db.query(Like).filter(Like.user_id == user.id)
-    if post is not None:
-        query = query.filter(Like.post_id == post.id)
-    elif reel is not None:
-        query = query.filter(Like.reels_id == reel.id)
-    elif comment is not None:
-        query = query.filter(Like.comment_id == comment.id)
-    else:
-        return
-
-    if query.first() is None:
-        db.add(
-            Like(
-                user_id=user.id,
-                post_id=post.id if post else None,
-                reels_id=reel.id if reel else None,
-                comment_id=comment.id if comment else None,
-            )
-        )
+def ensure_like(
+    db,
+    user: User,
+    post: Post | None = None,
+    reel: Reel | None = None,
+    comment: Comment | None = None,
+) -> None:
+    db.add(
+        Like(
+            user_id=user.id,
+            post_id=post.id if post else None,
+            reels_id=reel.id if reel else None,
+            comment_id=comment.id if comment else None,
+        ),
+    )
 
 
 def ensure_post_view(db, user: User, post: Post) -> None:
     if user.id == post.user_id:
         return
 
-    view = db.query(PostView).filter(PostView.user_id == user.id, PostView.post_id == post.id).first()
-    if view is None:
-        db.add(PostView(user_id=user.id, post_id=post.id))
-        post.views_count += 1
+    db.add(PostView(user_id=user.id, post_id=post.id))
+    post.views_count += 1
 
 
-def ensure_reel_view(db, user: User, reel: Reel) -> None:
+def ensure_reel_view(db, user: User, reel: Reel, watched_percent: int = 80) -> None:
     if user.id == reel.user_id:
         return
 
-    view = db.query(ReelView).filter(ReelView.user_id == user.id, ReelView.reels_id == reel.id).first()
-    if view is None:
-        db.add(ReelView(user_id=user.id, reels_id=reel.id, watched_percent=80))
+    db.add(ReelView(user_id=user.id, reels_id=reel.id, watched_percent=watched_percent))
+    if watched_percent >= 50:
         reel.views_count += 1
 
 
@@ -485,87 +652,217 @@ def ensure_story_view(db, user: User, story: Story) -> None:
     if user.id == story.user_id:
         return
 
-    view = db.query(StoryView).filter(StoryView.user_id == user.id, StoryView.story_id == story.id).first()
-    if view is None:
-        db.add(StoryView(user_id=user.id, story_id=story.id))
-        story.views_count += 1
+    db.add(StoryView(user_id=user.id, story_id=story.id))
+    story.views_count += 1
+
+
+def ensure_saved_post(db, user: User, post: Post) -> None:
+    if user.id == post.user_id:
+        return
+
+    db.add(SavedPost(user_id=user.id, post_id=post.id))
+
+
+def ensure_saved_reel(db, user: User, reel: Reel) -> None:
+    if user.id == reel.user_id:
+        return
+
+    db.add(SavedReel(user_id=user.id, reels_id=reel.id))
 
 
 def ensure_chat(db, user_a: User, user_b: User) -> Chat:
     first_id, second_id = sorted([user_a.id, user_b.id])
-    chat = db.query(Chat).filter(Chat.user_id_1 == first_id, Chat.user_id_2 == second_id).first()
-    if chat is None:
-        chat = Chat(user_id_1=first_id, user_id_2=second_id)
-        db.add(chat)
-        db.flush()
+    chat = Chat(user_id_1=first_id, user_id_2=second_id)
+    db.add(chat)
+    db.flush()
+
     return chat
 
 
 def ensure_message(db, chat: Chat, sender: User, text: str) -> None:
-    exists = db.query(DirectMessage).filter(
-        DirectMessage.chat_id == chat.id,
-        DirectMessage.sender_id == sender.id,
-        DirectMessage.text == text,
-    ).first()
-    if exists is None:
-        db.add(DirectMessage(chat_id=chat.id, sender_id=sender.id, text=text))
+    db.add(DirectMessage(chat_id=chat.id, sender_id=sender.id, text=text))
+    chat.updated_at = get_dushanbe_time()
 
 
-def ensure_group(db, owner: User, users: list[User]) -> None:
-    group_name = GROUP_NAMES[owner.id % len(GROUP_NAMES)]
-    group = db.query(Group).filter(
-        Group.owner_id == owner.id,
-        Group.name.in_(GROUP_NAMES + ["Weekend Plans"]),
-    ).first()
-    if group is None:
-        group = Group(owner_id=owner.id, name=group_name)
-        db.add(group)
-        db.flush()
-    else:
-        group.name = group_name
-
-    for user in users:
-        member = db.query(GroupMember).filter(GroupMember.group_id == group.id, GroupMember.user_id == user.id).first()
-        if member is None:
-            db.add(GroupMember(group_id=group.id, user_id=user.id))
-
-    exists = db.query(GroupMessage).filter(GroupMessage.group_id == group.id, GroupMessage.text == "Saturday coffee first, then the gallery?").first()
-    if exists is None:
-        db.add(GroupMessage(group_id=group.id, sender_id=owner.id, text="Saturday coffee first, then the gallery?"))
-
-
-def seed_existing_user_context(db, existing: User, users: list[User]) -> None:
-    for user in users[:4]:
-        ensure_follow(db, existing, user)
-        ensure_follow(db, user, existing)
-
-    post = ensure_context_post(db, existing)
-    reel = ensure_context_reel(db, existing)
-    ensure_story(db, existing, IMAGE_URLS[(existing.id + 4) % len(IMAGE_URLS)])
+def ensure_group(db, owner: User, members: list[User], name: str, avatar_url: str, messages: list[str]) -> None:
+    group = Group(owner_id=owner.id, name=name, avatar_url=avatar_url)
+    db.add(group)
     db.flush()
 
-    story = db.query(Story).filter(
-        Story.user_id == existing.id,
-        Story.media_url == IMAGE_URLS[(existing.id + 4) % len(IMAGE_URLS)],
-    ).first()
+    for member in members:
+        db.add(GroupMember(group_id=group.id, user_id=member.id))
 
-    for viewer in users[:5]:
-        ensure_like(db, viewer, post=post)
-        ensure_like(db, viewer, reel=reel)
-        ensure_post_view(db, viewer, post)
-        ensure_reel_view(db, viewer, reel)
-        if story:
-            ensure_story_view(db, viewer, story)
+    for index, message in enumerate(messages):
+        sender = members[index % len(members)]
+        db.add(GroupMessage(group_id=group.id, sender_id=sender.id, text=message))
 
-    ensure_comment(db, users[0], "This looks calm and real.", post=post)
-    ensure_comment(db, users[1], "Save-worthy corner.", post=post)
-    ensure_comment(db, users[2], "Love the pacing here.", reel=reel)
 
-    chat = ensure_chat(db, existing, users[0])
-    ensure_message(db, chat, users[0], "That new post looks great.")
-    ensure_message(db, chat, existing, "Thanks, testing the app with real content now.")
+def seed_social_graph(db, users: list[User]) -> None:
+    total = len(users)
 
-    ensure_group(db, existing, [existing, users[0], users[1], users[2]])
+    for index, user in enumerate(users):
+        for distance in (1, 2, 4, 7):
+            ensure_follow(db, user, users[(index + distance) % total], accepted=True)
+
+        if index % 2 == 0:
+            ensure_follow(db, users[(index + 5) % total], user, accepted=True)
+
+        if index % 3 == 0:
+            ensure_follow(db, user, users[(index + 9) % total], accepted=False)
+
+
+def seed_posts(db, users: list[User]) -> list[Post]:
+    posts = []
+
+    for user_index, user in enumerate(users):
+        first_name = user.profile.full_name.split()[0] if user.profile and user.profile.full_name else "Demo"
+
+        for slot in range(5):
+            post_index = user_index * 5 + slot
+            description, hashtag = POSTS[post_index % len(POSTS)]
+            description = f"{description} {first_name}'s set {slot + 1}."
+            media_items = [IMAGE_URLS[(post_index * 2) % len(IMAGE_URLS)]]
+
+            if post_index % 4 == 0:
+                media_items.append(IMAGE_URLS[(post_index * 2 + 1) % len(IMAGE_URLS)])
+            if post_index % 9 == 0:
+                media_items.append(f"{VIDEO_URLS[post_index % len(VIDEO_URLS)]}?post={post_index}")
+
+            posts.append(
+                ensure_post(
+                    db,
+                    user,
+                    description,
+                    hashtag,
+                    media_items,
+                    created_minutes_ago=slot * len(users) + user_index,
+                ),
+            )
+
+    return posts
+
+
+def seed_reels(db, users: list[User]) -> list[Reel]:
+    reels = []
+
+    for user_index, user in enumerate(users):
+        first_name = user.profile.full_name.split()[0] if user.profile and user.profile.full_name else "Demo"
+
+        for slot in range(3):
+            reel_index = user_index * 3 + slot
+            extra_description, extra_hashtag = REELS[reel_index % len(REELS)]
+            reels.append(
+                ensure_reel(
+                    db,
+                    user,
+                    f"{extra_description} {first_name}'s clip {slot + 1}.",
+                    extra_hashtag,
+                    f"{VIDEO_URLS[reel_index % len(VIDEO_URLS)]}?reel={reel_index}",
+                    created_minutes_ago=slot * len(users) + user_index,
+                ),
+            )
+
+    return reels
+
+
+def seed_stories(db, users: list[User]) -> list[Story]:
+    stories = []
+
+    for index, user in enumerate(users):
+        stories.append(ensure_story(db, user, IMAGE_URLS[(index + 80) % len(IMAGE_URLS)]))
+
+        if index % 3 == 0:
+            stories.append(
+                ensure_story(
+                    db,
+                    user,
+                    f"{VIDEO_URLS[(index + 7) % len(VIDEO_URLS)]}?story={index}",
+                ),
+            )
+
+    return stories
+
+
+def seed_engagement(db, users: list[User], posts: list[Post], reels: list[Reel], stories: list[Story]) -> None:
+    total = len(users)
+
+    for index, post in enumerate(posts):
+        for offset in (1, 3):
+            commenter = users[(index + offset) % total]
+            if commenter.id == post.user_id:
+                continue
+
+            comment = ensure_comment(
+                db,
+                commenter,
+                COMMENT_TEXTS[(index + offset) % len(COMMENT_TEXTS)],
+                post=post,
+            )
+            ensure_like(db, users[(index + offset + 5) % total], comment=comment)
+
+        for user_index, user in enumerate(users):
+            if user.id == post.user_id:
+                continue
+
+            if (user_index + index) % 3 != 0:
+                ensure_like(db, user, post=post)
+            if (user_index + index) % 2 == 0:
+                ensure_post_view(db, user, post)
+
+        ensure_saved_post(db, users[(index + 6) % total], post)
+        ensure_saved_post(db, users[(index + 11) % total], post)
+
+    for index, reel in enumerate(reels):
+        for offset in (2, 5):
+            commenter = users[(index + offset) % total]
+            if commenter.id == reel.user_id:
+                continue
+
+            comment = ensure_comment(
+                db,
+                commenter,
+                COMMENT_TEXTS[(index + offset + 2) % len(COMMENT_TEXTS)],
+                reel=reel,
+            )
+            ensure_like(db, users[(index + offset + 4) % total], comment=comment)
+
+        for user_index, user in enumerate(users):
+            if user.id == reel.user_id:
+                continue
+
+            if (user_index * 2 + index) % 4 != 0:
+                ensure_like(db, user, reel=reel)
+            if (user_index + index) % 2 == 1:
+                ensure_reel_view(db, user, reel)
+
+        ensure_saved_reel(db, users[(index + 4) % total], reel)
+
+    for index, story in enumerate(stories):
+        for offset in range(1, 9):
+            ensure_story_view(db, users[(index + offset) % total], story)
+
+
+def seed_messages(db, users: list[User]) -> None:
+    for first, second, messages in DIRECT_THREADS:
+        chat = ensure_chat(db, users[first], users[second])
+        for index, message in enumerate(messages):
+            sender = users[first] if index % 2 == 0 else users[second]
+            ensure_message(db, chat, sender, message)
+
+    for group_data in GROUPS:
+        members = [users[index] for index in group_data["members"]]
+        owner = users[group_data["owner"]]
+        if owner not in members:
+            members.insert(0, owner)
+
+        ensure_group(
+            db,
+            owner,
+            members,
+            group_data["name"],
+            group_data["avatar"],
+            group_data["messages"],
+        )
 
 
 def main() -> None:
@@ -573,61 +870,27 @@ def main() -> None:
     db = SessionLocal()
 
     try:
-        cleanup_old_test_data(db)
-        polish_placeholder_profiles(db)
+        cleanup_seed_accounts(db)
 
-        users = [get_or_create_user(db, person) for person in PEOPLE]
-        db.flush()
-        seed_usernames = {person["username"] for person in PEOPLE}
-
-        for index, user in enumerate(users):
-            ensure_note(db, user, ["Out for coffee", "New edit soon", "Studio day", "On the train", "Saving ideas", "Trail morning"][index])
-            for other in users:
-                if other.id != user.id and (other.id + user.id) % 2 == 0:
-                    ensure_follow(db, user, other)
-
-        for existing in db.query(User).all():
-            if existing.profile and existing.profile.username not in seed_usernames:
-                seed_existing_user_context(db, existing, users)
-
-        posts = []
-        for index, (description, hashtag) in enumerate(POSTS):
-            owner = users[index % len(users)]
-            media_items = [IMAGE_URLS[index % len(IMAGE_URLS)]]
-            if index % 4 == 1:
-                media_items.append(IMAGE_URLS[(index + 1) % len(IMAGE_URLS)])
-            posts.append(ensure_post(db, owner, description, hashtag, media_items))
-
-        reels = [
-            ensure_reel(db, users[(index + 1) % len(users)], description, hashtag, VIDEO_URLS[index % len(VIDEO_URLS)])
-            for index, (description, hashtag) in enumerate(REELS)
-        ]
+        users = [create_seed_user(db, person) for person in PEOPLE]
         db.flush()
 
-        for index, user in enumerate(users):
-            ensure_story(db, user, IMAGE_URLS[(index + 4) % len(IMAGE_URLS)])
+        for user, person in zip(users, PEOPLE, strict=True):
+            ensure_note(db, user, person["note"])
 
-        for index, post in enumerate(posts):
-            commenter = users[(index + 1) % len(users)]
-            comment = ensure_comment(db, commenter, "This frame feels so good.", post=post)
-            for liker in users:
-                if liker.id != post.user_id:
-                    ensure_like(db, liker, post=post)
-            ensure_like(db, users[(index + 2) % len(users)], comment=comment)
-
-        for index, reel in enumerate(reels):
-            ensure_comment(db, users[index], "Love this clip.", reel=reel)
-            for liker in users[:4]:
-                if liker.id != reel.user_id:
-                    ensure_like(db, liker, reel=reel)
-
-        chat = ensure_chat(db, users[0], users[1])
-        ensure_message(db, chat, users[0], "That cafe photo is perfect.")
-        ensure_message(db, chat, users[1], "Thanks, posting a reel later.")
-        ensure_group(db, users[2], users[:4])
+        seed_social_graph(db, users)
+        posts = seed_posts(db, users)
+        reels = seed_reels(db, users)
+        stories = seed_stories(db, users)
+        seed_engagement(db, users, posts, reels, stories)
+        seed_messages(db, users)
 
         db.commit()
-        print(f"Realistic seed complete. Password for seeded users: {PASSWORD}")
+        print(
+            "Realistic seed complete. "
+            f"Created {len(users)} synthetic users. "
+            f"Password for seeded users: {PASSWORD}"
+        )
     finally:
         db.close()
 

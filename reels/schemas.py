@@ -81,6 +81,7 @@ class ReelRead(BaseModel):
     likes_count: int
     comments_count: int
     is_liked: bool
+    is_saved: bool
     created_at: datetime
     user: ReelUserRead
 

@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, Play, Volume2, VolumeX } from 'lucide-react'
+import { Bookmark, Heart, MessageCircle, Play, Volume2, VolumeX } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
@@ -13,6 +13,8 @@ interface ReelCardProps {
   onComment: (reel: Reel) => void
   onFollow: (username: string) => void
   onLike: (reelsId: number) => void
+  onOpenLikes: (reel: Reel) => void
+  onSave: (reelsId: number) => void
   onViewed: (reelsId: number, watchedPercent: number) => void
 }
 
@@ -22,6 +24,8 @@ export function ReelCard({
   onComment,
   onFollow,
   onLike,
+  onOpenLikes,
+  onSave,
   onViewed,
 }: ReelCardProps) {
   const navigate = useNavigate()
@@ -177,21 +181,27 @@ export function ReelCard({
           <button type="button" onClick={openProfile}>
             <Avatar size={44} src={reel.user.avatar_url} username={reel.user.username} />
           </button>
-          <button
-            className="flex flex-col items-center gap-1 text-ig-text transition hover:text-ig-muted"
-            type="button"
-            aria-label="Нравится"
-            onClick={() => onLike(reel.id)}
-          >
-            <Heart
-              size={30}
-              className={reel.is_liked ? 'text-ig-danger' : ''}
-              fill={reel.is_liked ? 'currentColor' : 'none'}
-            />
-            <span className="text-xs font-semibold">
+          <div className="flex flex-col items-center gap-1 text-ig-text">
+            <button
+              className="transition hover:text-ig-muted"
+              type="button"
+              aria-label="Нравится"
+              onClick={() => onLike(reel.id)}
+            >
+              <Heart
+                size={30}
+                className={reel.is_liked ? 'text-ig-danger' : ''}
+                fill={reel.is_liked ? 'currentColor' : 'none'}
+              />
+            </button>
+            <button
+              className="text-xs font-semibold transition hover:text-ig-muted"
+              type="button"
+              onClick={() => onOpenLikes(reel)}
+            >
               {compactNumber(reel.likes_count)}
-            </span>
-          </button>
+            </button>
+          </div>
           <button
             className="flex flex-col items-center gap-1 text-ig-text transition hover:text-ig-muted"
             type="button"
@@ -202,6 +212,14 @@ export function ReelCard({
             <span className="text-xs font-semibold">
               {compactNumber(reel.comments_count)}
             </span>
+          </button>
+          <button
+            className="flex flex-col items-center gap-1 text-ig-text transition hover:text-ig-muted"
+            type="button"
+            aria-label="Сохранить"
+            onClick={() => onSave(reel.id)}
+          >
+            <Bookmark size={30} fill={reel.is_saved ? 'currentColor' : 'none'} />
           </button>
         </div>
       </div>

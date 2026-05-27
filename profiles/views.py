@@ -1,9 +1,10 @@
 from fastapi import HTTPException
-from sqlalchemy import desc, func
+from sqlalchemy import case, desc, func
 from sqlalchemy.orm import Session
 
 from follows.models import Follow
 from blacklist.models import BlackList
+from likes.models import Like
 from posts.models import Post
 from posts.views import get_post_data
 from profiles.models import Profile
@@ -11,6 +12,41 @@ from profiles.schemas import ProfileUpdate
 from reels.models import Reel
 from reels.views import get_reel_data
 from users.permissions import can_view_content, can_view_profile
+
+
+def get_blocked_user_ids(db: Session, user_id: int):
+    blocked_users = db.query(BlackList).filter(
+        (BlackList.blocker_id == user_id) |
+        (BlackList.blocked_id == user_id)
+    ).all()
+
+    blocked_user_ids = []
+    for blacklist in blocked_users:
+        if blacklist.blocker_id == user_id:
+            blocked_user_ids.append(blacklist.blocked_id)
+        else:
+            blocked_user_ids.append(blacklist.blocker_id)
+
+    return blocked_user_ids
+
+
+def get_follow_target_ids(db: Session, user_id: int):
+    return [
+        following_id
+        for (following_id,) in db.query(Follow.following_id).filter(
+            Follow.follower_id == user_id
+        ).all()
+    ]
+
+
+def get_accepted_following_ids(db: Session, user_id: int):
+    return [
+        following_id
+        for (following_id,) in db.query(Follow.following_id).filter(
+            Follow.follower_id == user_id,
+            Follow.is_accepted == True,
+        ).all()
+    ]
 
 
 def get_my_profile(db: Session, user_id: int):
@@ -162,20 +198,13 @@ def search_profiles(query: str, db: Session, current_user_id: int, limit: int = 
     if not query:
         raise HTTPException(status_code=400, detail="Search query is required")
 
-    blocked_users = db.query(BlackList).filter(
-        (BlackList.blocker_id == current_user_id) |
-        (BlackList.blocked_id == current_user_id)
-    ).all()
-
-    blocked_user_ids = []
-    for blacklist in blocked_users:
-        if blacklist.blocker_id == current_user_id:
-            blocked_user_ids.append(blacklist.blocked_id)
-        else:
-            blocked_user_ids.append(blacklist.blocker_id)
-
+    blocked_user_ids = get_blocked_user_ids(db, current_user_id)
     profiles_query = db.query(Profile).filter(
-        Profile.username.ilike(f"%{query}%")
+        Profile.user_id != current_user_id,
+        (
+            Profile.username.ilike(f"%{query}%")
+            | Profile.full_name.ilike(f"%{query}%")
+        ),
     )
 
     if blocked_user_ids:
@@ -197,33 +226,61 @@ def search_profiles(query: str, db: Session, current_user_id: int, limit: int = 
 
 
 def get_profile_recommendations(db: Session, current_user_id: int, limit: int = 5, offset: int = 0):
-    blocked_users = db.query(BlackList).filter(
-        (BlackList.blocker_id == current_user_id) |
-        (BlackList.blocked_id == current_user_id)
-    ).all()
-
-    blocked_user_ids = []
-    for blacklist in blocked_users:
-        if blacklist.blocker_id == current_user_id:
-            blocked_user_ids.append(blacklist.blocked_id)
-        else:
-            blocked_user_ids.append(blacklist.blocker_id)
-
-    followed_user_ids = [
-        following_id
-        for (following_id,) in db.query(Follow.following_id).filter(
-            Follow.follower_id == current_user_id
-        ).all()
-    ]
+    blocked_user_ids = get_blocked_user_ids(db, current_user_id)
+    followed_user_ids = get_follow_target_ids(db, current_user_id)
+    current_following_ids = get_accepted_following_ids(db, current_user_id)
 
     followers_subquery = db.query(
         Follow.following_id.label("user_id"),
         func.count(Follow.id).label("followers_count"),
     ).filter(Follow.is_accepted == True).group_by(Follow.following_id).subquery()
 
+    mutual_subquery = db.query(
+        Follow.follower_id.label("user_id"),
+        func.count(Follow.following_id).label("mutual_count"),
+    ).filter(
+        Follow.is_accepted == True,
+        Follow.following_id.in_(current_following_ids) if current_following_ids else False,
+    ).group_by(Follow.follower_id).subquery()
+
+    post_likes_subquery = db.query(
+        Post.user_id.label("user_id"),
+        func.count(Like.id).label("post_likes_count"),
+    ).join(Like, Like.post_id == Post.id).group_by(Post.user_id).subquery()
+
+    reel_likes_subquery = db.query(
+        Reel.user_id.label("user_id"),
+        func.count(Like.id).label("reel_likes_count"),
+    ).join(Like, Like.reels_id == Reel.id).group_by(Reel.user_id).subquery()
+
+    post_views_subquery = db.query(
+        Post.user_id.label("user_id"),
+        func.coalesce(func.sum(Post.views_count), 0).label("post_views_count"),
+    ).group_by(Post.user_id).subquery()
+
+    reel_views_subquery = db.query(
+        Reel.user_id.label("user_id"),
+        func.coalesce(func.sum(Reel.views_count), 0).label("reel_views_count"),
+    ).group_by(Reel.user_id).subquery()
+
     query = db.query(Profile).outerjoin(
         followers_subquery,
         followers_subquery.c.user_id == Profile.user_id,
+    ).outerjoin(
+        mutual_subquery,
+        mutual_subquery.c.user_id == Profile.user_id,
+    ).outerjoin(
+        post_likes_subquery,
+        post_likes_subquery.c.user_id == Profile.user_id,
+    ).outerjoin(
+        reel_likes_subquery,
+        reel_likes_subquery.c.user_id == Profile.user_id,
+    ).outerjoin(
+        post_views_subquery,
+        post_views_subquery.c.user_id == Profile.user_id,
+    ).outerjoin(
+        reel_views_subquery,
+        reel_views_subquery.c.user_id == Profile.user_id,
     ).filter(Profile.user_id != current_user_id)
 
     excluded_user_ids = set(blocked_user_ids + followed_user_ids)
@@ -231,7 +288,19 @@ def get_profile_recommendations(db: Session, current_user_id: int, limit: int = 
     if excluded_user_ids:
         query = query.filter(Profile.user_id.notin_(excluded_user_ids))
 
+    score = (
+        func.coalesce(mutual_subquery.c.mutual_count, 0) * 50
+        + func.coalesce(followers_subquery.c.followers_count, 0) * 8
+        + func.coalesce(post_likes_subquery.c.post_likes_count, 0) * 3
+        + func.coalesce(reel_likes_subquery.c.reel_likes_count, 0) * 3
+        + func.coalesce(post_views_subquery.c.post_views_count, 0)
+        + func.coalesce(reel_views_subquery.c.reel_views_count, 0)
+        + case((Profile.is_private == True, -25), else_=0)
+    )
+
     profiles = query.order_by(
+        desc(score),
+        desc(func.coalesce(mutual_subquery.c.mutual_count, 0)),
         desc(func.coalesce(followers_subquery.c.followers_count, 0)),
         Profile.username.asc(),
     ).offset(offset).limit(limit + 1).all()

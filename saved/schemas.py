@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from posts.schemas import PostRead
+from reels.schemas import ReelRead
 
 
 class ToggleSavedResponse(BaseModel):
@@ -27,4 +28,18 @@ class PaginationSchema(BaseModel):
 
 class SavedPostsListResponse(BaseModel):
     saved_posts: list[SavedPostRead]
+    pagination: PaginationSchema
+
+
+class SavedReelRead(BaseModel):
+    id: int
+    reels_id: int
+    created_at: datetime
+    reel: ReelRead
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SavedReelsListResponse(BaseModel):
+    saved_reels: list[SavedReelRead]
     pagination: PaginationSchema

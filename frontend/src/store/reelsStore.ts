@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import { toggleCommentLike } from '../api/comments'
 import {
   addReelComment,
   followUser,
   getReelComments,
   getReelsFeed,
   toggleReelLike,
+  toggleReelSaved,
   updateReelView,
 } from '../api/reels'
 import type { Comment, Reel } from '../types/reels'
@@ -30,9 +32,11 @@ interface ReelsState {
   loadReels: () => Promise<void>
   loadMore: () => Promise<void>
   toggleLike: (reelsId: number) => Promise<void>
+  toggleSaved: (reelsId: number) => Promise<void>
   markViewed: (reelsId: number, watchedPercent: number) => Promise<void>
   follow: (username: string) => Promise<void>
   loadComments: (reelsId: number) => Promise<void>
+  toggleCommentLike: (reelsId: number, commentId: number) => Promise<void>
   sendComment: (reelsId: number, text: string) => Promise<void>
 }
 
@@ -138,6 +142,36 @@ export const useReelsStore = create<ReelsState>((set, get) => ({
     }
   },
 
+  toggleSaved: async (reelsId) => {
+    const current = get().reels.find((reel) => reel.id === reelsId)
+
+    if (!current) {
+      return
+    }
+
+    set({
+      reels: updateReel(get().reels, reelsId, (reel) => ({
+        ...reel,
+        is_saved: !reel.is_saved,
+      })),
+    })
+
+    try {
+      const data = await toggleReelSaved(reelsId)
+      set({
+        reels: updateReel(get().reels, reelsId, (reel) => ({
+          ...reel,
+          is_saved: data.is_saved,
+        })),
+      })
+    } catch (error) {
+      set({
+        reels: updateReel(get().reels, reelsId, () => current),
+        error: getApiError(error),
+      })
+    }
+  },
+
   markViewed: async (reelsId, watchedPercent) => {
     try {
       const { reel } = await updateReelView(reelsId, watchedPercent)
@@ -190,6 +224,86 @@ export const useReelsStore = create<ReelsState>((set, get) => ({
         commentsByReelId: {
           ...state.commentsByReelId,
           [reelsId]: { ...current, isLoading: false },
+        },
+      }))
+    }
+  },
+
+  toggleCommentLike: async (reelsId, commentId) => {
+    const currentState = get().commentsByReelId[reelsId]
+    const currentComment = currentState?.items.find(
+      (comment) => comment.id === commentId,
+    )
+
+    if (!currentState || !currentComment) {
+      return
+    }
+
+    const nextIsLiked = !currentComment.is_liked
+
+    set((state) => ({
+      commentsByReelId: {
+        ...state.commentsByReelId,
+        [reelsId]: {
+          ...currentState,
+          items: currentState.items.map((comment) =>
+            comment.id === commentId
+              ? {
+                  ...comment,
+                  is_liked: nextIsLiked,
+                  likes_count: Math.max(
+                    0,
+                    comment.likes_count + (nextIsLiked ? 1 : -1),
+                  ),
+                }
+              : comment,
+          ),
+        },
+      },
+    }))
+
+    try {
+      const data = await toggleCommentLike(commentId)
+      set((state) => {
+        const latest = state.commentsByReelId[reelsId] ?? currentState
+
+        return {
+          commentsByReelId: {
+            ...state.commentsByReelId,
+            [reelsId]: {
+              ...latest,
+              items: latest.items.map((comment) =>
+                comment.id === commentId
+                  ? {
+                      ...comment,
+                      is_liked: data.is_liked,
+                      likes_count: Math.max(
+                        0,
+                        currentComment.likes_count +
+                          (data.is_liked === currentComment.is_liked
+                            ? 0
+                            : data.is_liked
+                              ? 1
+                              : -1),
+                      ),
+                    }
+                  : comment,
+              ),
+            },
+          },
+        }
+      })
+    } catch (error) {
+      set((state) => ({
+        error: getApiError(error),
+        commentsByReelId: {
+          ...state.commentsByReelId,
+          [reelsId]: {
+            ...currentState,
+            items: currentState.items.map((comment) =>
+              comment.id === commentId ? currentComment : comment,
+            ),
+          },
         },
       }))
     }

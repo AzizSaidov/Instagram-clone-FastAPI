@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from chats.schemas import ChatResponse, ChatsListResponse, DirectMessageCreate, DirectMessageResponse, DirectMessagesListResponse
-from chats.views import create_direct_message, create_or_get_chat, get_chat_detail, get_chat_messages, get_my_chats, read_chat_messages
+from chats.views import create_direct_message, create_or_get_chat, delete_chat, get_chat_detail, get_chat_messages, get_my_chats, read_chat_messages
 from database import get_db
 from users.auth import get_current_user
 from users.models import User
@@ -44,6 +44,11 @@ def create_chat(username: str, db: Session = Depends(get_db), current_user: User
 @chats_router.get("/{chat_id}/", response_model=ChatResponse)
 def chat_detail(chat_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return get_chat_detail(chat_id, db, current_user.id)
+
+
+@chats_router.delete("/{chat_id}/")
+def delete_my_chat(chat_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return delete_chat(chat_id, db, current_user.id)
 
 
 @chats_router.post("/{chat_id}/messages/", response_model=DirectMessageResponse, status_code=201)

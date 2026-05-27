@@ -20,3 +20,18 @@ class SavedPost(Base):
 
     user = relationship("User")
     post = relationship("Post")
+
+
+class SavedReel(Base):
+    __tablename__ = "saved_reels"
+    __table_args__ = (
+        UniqueConstraint("user_id", "reels_id", name="uq_saved_reel_user"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reels_id: Mapped[int] = mapped_column(ForeignKey("reels.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=get_dushanbe_time, nullable=False)
+
+    user = relationship("User")
+    reel = relationship("Reel")

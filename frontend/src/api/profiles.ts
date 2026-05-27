@@ -7,6 +7,7 @@ import type {
   ProfileSearchResponse,
   ProfileUpdatePayload,
   SavedPostsListResponse,
+  SavedReelsListResponse,
 } from '../types/profiles'
 import type { PostsListResponse } from '../types/feed'
 
@@ -63,6 +64,13 @@ export async function getMyPosts(limit = 30, offset = 0) {
 
 export async function getSavedPosts(limit = 30, offset = 0) {
   const { data } = await api.get<SavedPostsListResponse>('/saved/', {
+    params: { limit, offset },
+  })
+  return data
+}
+
+export async function getSavedReels(limit = 30, offset = 0) {
+  const { data } = await api.get<SavedReelsListResponse>('/saved/reels/', {
     params: { limit, offset },
   })
   return data

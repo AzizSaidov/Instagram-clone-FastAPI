@@ -5,6 +5,7 @@ import type {
   NotesListResponse,
   PostsListResponse,
   StoriesListResponse,
+  StoryResponse,
   ToggleLikeResponse,
   ToggleSavedResponse,
 } from '../types/feed'
@@ -78,6 +79,11 @@ export async function getStoryViewers(storyId: number) {
 
 export async function deleteStory(storyId: number) {
   await api.delete(`/stories/${storyId}/`)
+}
+
+export async function sharePostToStory(postId: number) {
+  const { data } = await api.post<StoryResponse>(`/stories/from-post/${postId}/`)
+  return data
 }
 
 export async function getMyNote() {

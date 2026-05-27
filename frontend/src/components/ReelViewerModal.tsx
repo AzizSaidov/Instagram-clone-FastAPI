@@ -1,4 +1,5 @@
 import {
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   Heart,
@@ -10,11 +11,14 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toggleCommentLike } from '../api/comments'
+import { getCommentLikeUsers, getReelLikeUsers } from '../api/likes'
 import {
   addReelComment,
   getReelComments,
   getReelViewers,
   toggleReelLike,
+  toggleReelSaved,
   updateReelView,
 } from '../api/reels'
 import { useAuthStore } from '../store/authStore'
@@ -42,6 +46,13 @@ function nextLikeState(reel: Reel, isLiked: boolean) {
   }
 }
 
+function nextSaveState(reel: Reel, isSaved: boolean) {
+  return {
+    ...reel,
+    is_saved: isSaved,
+  }
+}
+
 export function ReelViewerModal({
   reels,
   initialIndex,
@@ -58,6 +69,9 @@ export function ReelViewerModal({
     null,
   )
   const [viewersReelId, setViewersReelId] = useState<number | null>(null)
+  const [likesModal, setLikesModal] = useState<
+    { kind: 'reel' | 'comment'; id: number; title: string } | null
+  >(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [isCommentsLoading, setIsCommentsLoading] = useState(false)
   const [isCommentSending, setIsCommentSending] = useState(false)
@@ -183,6 +197,22 @@ export function ReelViewerModal({
     }
   }
 
+  async function handleSave() {
+    const previousReel = currentReel
+    const optimisticReel = nextSaveState(currentReel, !currentReel.is_saved)
+
+    onReelChange(optimisticReel)
+    setError(null)
+
+    try {
+      const data = await toggleReelSaved(currentReel.id)
+      onReelChange(nextSaveState(previousReel, data.is_saved))
+    } catch (error) {
+      onReelChange(previousReel)
+      setError(getApiError(error))
+    }
+  }
+
   async function openComments() {
     setActiveCommentsReelId(currentReel.id)
     setIsCommentsLoading(true)
@@ -213,6 +243,57 @@ export function ReelViewerModal({
       setError(getApiError(error))
     } finally {
       setIsCommentSending(false)
+    }
+  }
+
+  async function handleCommentLike(comment: Comment) {
+    const previousComment = comment
+    const nextIsLiked = !comment.is_liked
+
+    setComments((items) =>
+      items.map((item) =>
+        item.id === comment.id
+          ? {
+              ...item,
+              is_liked: nextIsLiked,
+              likes_count: Math.max(
+                0,
+                item.likes_count + (nextIsLiked ? 1 : -1),
+              ),
+            }
+          : item,
+      ),
+    )
+    setError(null)
+
+    try {
+      const data = await toggleCommentLike(comment.id)
+      setComments((items) =>
+        items.map((item) =>
+          item.id === comment.id
+            ? {
+                ...item,
+                is_liked: data.is_liked,
+                likes_count: Math.max(
+                  0,
+                  previousComment.likes_count +
+                    (data.is_liked === previousComment.is_liked
+                      ? 0
+                      : data.is_liked
+                        ? 1
+                        : -1),
+                ),
+              }
+            : item,
+        ),
+      )
+    } catch (error) {
+      setComments((items) =>
+        items.map((item) =>
+          item.id === previousComment.id ? previousComment : item,
+        ),
+      )
+      setError(getApiError(error))
     }
   }
 
@@ -320,21 +401,33 @@ export function ReelViewerModal({
           </div>
 
           <div className="flex w-16 shrink-0 flex-col items-center gap-5 pb-2">
-            <button
-              className="flex flex-col items-center gap-1 text-ig-text transition hover:text-ig-muted"
-              type="button"
-              aria-label="Нравится"
-              onClick={() => void handleLike()}
-            >
-              <Heart
-                size={31}
-                className={currentReel.is_liked ? 'text-ig-danger' : ''}
-                fill={currentReel.is_liked ? 'currentColor' : 'none'}
-              />
-              <span className="text-xs font-semibold">
+            <div className="flex flex-col items-center gap-1 text-ig-text">
+              <button
+                className="transition hover:text-ig-muted"
+                type="button"
+                aria-label="Нравится"
+                onClick={() => void handleLike()}
+              >
+                <Heart
+                  size={31}
+                  className={currentReel.is_liked ? 'text-ig-danger' : ''}
+                  fill={currentReel.is_liked ? 'currentColor' : 'none'}
+                />
+              </button>
+              <button
+                className="text-xs font-semibold transition hover:text-ig-muted"
+                type="button"
+                onClick={() =>
+                  setLikesModal({
+                    kind: 'reel',
+                    id: currentReel.id,
+                    title: 'Лайки Reel',
+                  })
+                }
+              >
                 {compactNumber(currentReel.likes_count)}
-              </span>
-            </button>
+              </button>
+            </div>
             <button
               className="flex flex-col items-center gap-1 text-ig-text transition hover:text-ig-muted"
               type="button"
@@ -345,6 +438,17 @@ export function ReelViewerModal({
               <span className="text-xs font-semibold">
                 {compactNumber(currentReel.comments_count)}
               </span>
+            </button>
+            <button
+              className="flex flex-col items-center gap-1 text-ig-text transition hover:text-ig-muted"
+              type="button"
+              aria-label="Сохранить"
+              onClick={() => void handleSave()}
+            >
+              <Bookmark
+                size={31}
+                fill={currentReel.is_saved ? 'currentColor' : 'none'}
+              />
             </button>
             {isMine && (
               <button
@@ -370,14 +474,35 @@ export function ReelViewerModal({
           isSending={isCommentSending}
           reel={activeCommentsReel}
           onClose={() => setActiveCommentsReelId(null)}
+          onLikeComment={handleCommentLike}
+          onOpenCommentLikes={(comment) =>
+            setLikesModal({
+              kind: 'comment',
+              id: comment.id,
+              title: 'Лайки комментария',
+            })
+          }
           onSend={sendComment}
         />
       )}
       {viewersReelId !== null && (
         <ViewersModal
           title="Просмотры Reel"
+          viewerKey={viewersReelId}
           loadViewers={() => getReelViewers(viewersReelId)}
           onClose={() => setViewersReelId(null)}
+        />
+      )}
+      {likesModal && (
+        <ViewersModal
+          title={likesModal.title}
+          viewerKey={`${likesModal.kind}-${likesModal.id}`}
+          loadViewers={() =>
+            likesModal.kind === 'reel'
+              ? getReelLikeUsers(likesModal.id)
+              : getCommentLikeUsers(likesModal.id)
+          }
+          onClose={() => setLikesModal(null)}
         />
       )}
     </div>

@@ -25,6 +25,11 @@ export async function createChat(username: string) {
   return data
 }
 
+export async function deleteChat(chatId: number) {
+  const { data } = await api.delete(`/chats/${chatId}/`)
+  return data
+}
+
 export async function getChatMessages(chatId: number, limit = 30, offset = 0) {
   const { data } = await api.get<DirectMessagesListResponse>(
     `/chats/${chatId}/messages/`,
@@ -81,6 +86,17 @@ export async function updateGroup(
   payload: { name?: string; avatar_url?: string | null },
 ) {
   const { data } = await api.put<GroupResponse>(`/groups/${groupId}/`, payload)
+  return data
+}
+
+export async function uploadGroupAvatar(groupId: number, file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const { data } = await api.post<GroupResponse>(
+    `/groups/${groupId}/avatar/`,
+    formData,
+  )
   return data
 }
 

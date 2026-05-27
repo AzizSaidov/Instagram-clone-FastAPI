@@ -15,8 +15,10 @@ import {
   createPostComment,
   deleteComment,
   getPostComments,
+  toggleCommentLike,
 } from '../api/comments'
-import { getPostViewers } from '../api/feed'
+import { getPostViewers, sharePostToStory } from '../api/feed'
+import { getCommentLikeUsers, getPostLikeUsers } from '../api/likes'
 import { useAuthStore } from '../store/authStore'
 import type { Comment } from '../types/comments'
 import type { Post } from '../types/feed'
@@ -35,6 +37,7 @@ interface PostDetailModalProps {
   onClose: () => void
   onLike: (postId: number) => void
   onSave: (postId: number) => void
+  onShareToStory?: (postId: number) => Promise<void> | void
   onPostChange?: (post: Post) => void
   onDelete?: (postId: number) => Promise<void> | void
 }
@@ -45,6 +48,7 @@ export function PostDetailModal({
   onClose,
   onLike,
   onSave,
+  onShareToStory,
   onPostChange,
   onDelete,
 }: PostDetailModalProps) {
@@ -54,6 +58,9 @@ export function PostDetailModal({
   const [activeIndex, setActiveIndex] = useState(0)
   const [isActionsOpen, setIsActionsOpen] = useState(false)
   const [isViewersOpen, setIsViewersOpen] = useState(false)
+  const [likesModal, setLikesModal] = useState<
+    { kind: 'post' | 'comment'; id: number; title: string } | null
+  >(null)
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsOffset, setCommentsOffset] = useState(0)
   const [hasMoreComments, setHasMoreComments] = useState(false)
@@ -177,6 +184,66 @@ export function PostDetailModal({
     } catch (error) {
       setError(getApiError(error))
     }
+  }
+
+  async function handleCommentLike(comment: Comment) {
+    const previousComment = comment
+    const nextIsLiked = !comment.is_liked
+
+    setComments((items) =>
+      items.map((item) =>
+        item.id === comment.id
+          ? {
+              ...item,
+              is_liked: nextIsLiked,
+              likes_count: Math.max(
+                0,
+                item.likes_count + (nextIsLiked ? 1 : -1),
+              ),
+            }
+          : item,
+      ),
+    )
+    setError(null)
+
+    try {
+      const data = await toggleCommentLike(comment.id)
+      setComments((items) =>
+        items.map((item) =>
+          item.id === comment.id
+            ? {
+                ...item,
+                is_liked: data.is_liked,
+                likes_count: Math.max(
+                  0,
+                  previousComment.likes_count +
+                    (data.is_liked === previousComment.is_liked
+                      ? 0
+                      : data.is_liked
+                        ? 1
+                        : -1),
+                ),
+              }
+            : item,
+        ),
+      )
+    } catch (error) {
+      setComments((items) =>
+        items.map((item) =>
+          item.id === previousComment.id ? previousComment : item,
+        ),
+      )
+      setError(getApiError(error))
+    }
+  }
+
+  async function handleShareToStory() {
+    if (onShareToStory) {
+      await onShareToStory(post.id)
+      return
+    }
+
+    await sharePostToStory(post.id)
   }
 
   return (
@@ -305,11 +372,40 @@ export function PostDetailModal({
                       </button>{' '}
                       {comment.text}
                     </p>
-                    <TimeAgo
-                      className="mt-1 block text-xs text-ig-muted"
-                      value={comment.created_at}
-                    />
+                    <div className="mt-1 flex items-center gap-3 text-xs text-ig-muted">
+                      <TimeAgo value={comment.created_at} />
+                      {comment.likes_count > 0 && (
+                        <button
+                          className="font-semibold transition hover:text-ig-text"
+                          type="button"
+                          onClick={() =>
+                            setLikesModal({
+                              kind: 'comment',
+                              id: comment.id,
+                              title: 'Лайки комментария',
+                            })
+                          }
+                        >
+                          {compactNumber(comment.likes_count)} likes
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <button
+                    className={`self-start rounded-full p-1 transition hover:bg-ig-elevated ${
+                      comment.is_liked
+                        ? 'text-ig-danger'
+                        : 'text-ig-muted hover:text-ig-text'
+                    }`}
+                    type="button"
+                    aria-label="Нравится"
+                    onClick={() => void handleCommentLike(comment)}
+                  >
+                    <Heart
+                      size={15}
+                      fill={comment.is_liked ? 'currentColor' : 'none'}
+                    />
+                  </button>
                   {comment.user.username === myUsername && (
                     <button
                       className="self-start rounded-full p-1 text-ig-muted transition hover:bg-ig-elevated hover:text-ig-danger"
@@ -344,7 +440,18 @@ export function PostDetailModal({
                   />
                 </button>
                 <MessageCircle size={25} />
-                <Send size={25} className="text-ig-muted" />
+                <button
+                  className="transition hover:text-ig-muted"
+                  type="button"
+                  aria-label="Поделиться в историю"
+                  onClick={() =>
+                    void handleShareToStory().catch((error) =>
+                      setError(getApiError(error)),
+                    )
+                  }
+                >
+                  <Send size={25} />
+                </button>
               </div>
               <button
                 className="transition hover:text-ig-muted"
@@ -356,9 +463,19 @@ export function PostDetailModal({
                 <Bookmark size={25} fill={post.is_saved ? 'currentColor' : 'none'} />
               </button>
             </div>
-            <p className="mt-3 text-sm font-semibold">
+            <button
+              className="mt-3 text-left text-sm font-semibold transition hover:text-ig-muted"
+              type="button"
+              onClick={() =>
+                setLikesModal({
+                  kind: 'post',
+                  id: post.id,
+                  title: 'Лайки публикации',
+                })
+              }
+            >
               {compactNumber(post.likes_count)} likes
-            </p>
+            </button>
             <TimeAgo
               className="mt-1 block text-[10px] uppercase text-ig-faint"
               value={post.created_at}
@@ -407,13 +524,27 @@ export function PostDetailModal({
         onClose={() => setIsActionsOpen(false)}
         onDelete={onDelete ? () => onDelete(post.id) : undefined}
         onOpenViewers={canDelete ? () => setIsViewersOpen(true) : undefined}
+        onShareToStory={handleShareToStory}
         onToggleSaved={() => onSave(post.id)}
       />
       {isViewersOpen && (
         <ViewersModal
           title="Просмотры публикации"
+          viewerKey={post.id}
           loadViewers={() => getPostViewers(post.id)}
           onClose={() => setIsViewersOpen(false)}
+        />
+      )}
+      {likesModal && (
+        <ViewersModal
+          title={likesModal.title}
+          viewerKey={`${likesModal.kind}-${likesModal.id}`}
+          loadViewers={() =>
+            likesModal.kind === 'post'
+              ? getPostLikeUsers(likesModal.id)
+              : getCommentLikeUsers(likesModal.id)
+          }
+          onClose={() => setLikesModal(null)}
         />
       )}
     </div>

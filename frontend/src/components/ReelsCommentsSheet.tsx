@@ -1,4 +1,4 @@
-import { Send, X } from 'lucide-react'
+import { Heart, Send, X } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import type { Comment, Reel } from '../types/reels'
 import { TimeAgo } from './TimeAgo'
@@ -10,6 +10,8 @@ interface ReelsCommentsSheetProps {
   isLoading: boolean
   isSending: boolean
   onClose: () => void
+  onLikeComment?: (comment: Comment) => Promise<void> | void
+  onOpenCommentLikes?: (comment: Comment) => void
   onSend: (text: string) => Promise<void>
 }
 
@@ -19,6 +21,8 @@ export function ReelsCommentsSheet({
   isLoading,
   isSending,
   onClose,
+  onLikeComment,
+  onOpenCommentLikes,
   onSend,
 }: ReelsCommentsSheetProps) {
   const [text, setText] = useState('')
@@ -94,10 +98,36 @@ export function ReelsCommentsSheet({
                       {comment.text}
                     </p>
                     <TimeAgo
-                      className="mt-1 block text-xs text-ig-faint"
+                      className="mt-1 inline-block text-xs text-ig-faint"
                       value={comment.created_at}
                     />
+                    {comment.likes_count > 0 && onOpenCommentLikes && (
+                      <button
+                        className="ml-3 text-xs font-semibold text-ig-faint transition hover:text-ig-text"
+                        type="button"
+                        onClick={() => onOpenCommentLikes(comment)}
+                      >
+                        {comment.likes_count} likes
+                      </button>
+                    )}
                   </div>
+                  {onLikeComment && (
+                    <button
+                      className={`self-start rounded-full p-1 transition hover:bg-ig-elevated ${
+                        comment.is_liked
+                          ? 'text-ig-danger'
+                          : 'text-ig-muted hover:text-ig-text'
+                      }`}
+                      type="button"
+                      aria-label="Нравится"
+                      onClick={() => void onLikeComment(comment)}
+                    >
+                      <Heart
+                        size={15}
+                        fill={comment.is_liked ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                  )}
                 </article>
               ))}
             </div>

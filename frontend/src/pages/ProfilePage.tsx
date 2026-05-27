@@ -20,6 +20,7 @@ import {
   getMyPosts,
   getProfile,
   getSavedPosts,
+  getSavedReels,
   unfollowProfile,
 } from '../api/profiles'
 import {
@@ -190,9 +191,13 @@ export function ProfilePage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [reels, setReels] = useState<Reel[]>([])
   const [savedPosts, setSavedPosts] = useState<Post[]>([])
+  const [savedReels, setSavedReels] = useState<Reel[]>([])
   const [activeTab, setActiveTab] = useState<ProfileTab>('posts')
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [selectedReelIndex, setSelectedReelIndex] = useState<number | null>(null)
+  const [selectedReelSource, setSelectedReelSource] = useState<'profile' | 'saved'>(
+    'profile',
+  )
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [followListKind, setFollowListKind] = useState<FollowListKind | null>(null)
@@ -239,9 +244,10 @@ export function ProfilePage() {
         myUsername &&
         data.profile.username === myUsername
       ) {
-        const [myPostsData, savedData] = await Promise.all([
+        const [myPostsData, savedData, savedReelsData] = await Promise.all([
           getMyPosts(30, 0).catch(() => null),
           getSavedPosts(30, 0).catch(() => null),
+          getSavedReels(30, 0).catch(() => null),
         ])
 
         if (myPostsData) {
@@ -251,8 +257,13 @@ export function ProfilePage() {
         if (savedData) {
           setSavedPosts(savedData.saved_posts.map((item) => item.post))
         }
+
+        if (savedReelsData) {
+          setSavedReels(savedReelsData.saved_reels.map((item) => item.reel))
+        }
       } else {
         setSavedPosts([])
+        setSavedReels([])
       }
     } catch (error) {
       setError(getApiError(error))
@@ -330,6 +341,15 @@ export function ProfilePage() {
     setReels((items) =>
       items.map((reel) => (reel.id === updatedReel.id ? updatedReel : reel)),
     )
+    setSavedReels((items) =>
+      updatedReel.is_saved
+        ? items.some((reel) => reel.id === updatedReel.id)
+          ? items.map((reel) =>
+              reel.id === updatedReel.id ? updatedReel : reel,
+            )
+          : [updatedReel, ...items]
+        : items.filter((reel) => reel.id !== updatedReel.id),
+    )
   }
 
   async function handleFollow() {
@@ -403,7 +423,11 @@ export function ProfilePage() {
     }
   }
 
-  const visiblePosts = activeTab === 'saved' ? savedPosts : posts
+  const savedItems = [
+    ...savedPosts.map((post) => ({ kind: 'post' as const, post })),
+    ...savedReels.map((reel, index) => ({ kind: 'reel' as const, index, reel })),
+  ]
+  const currentReels = selectedReelSource === 'saved' ? savedReels : reels
 
   if (isLoading) {
     return <ProfileSkeleton />
@@ -550,18 +574,18 @@ export function ProfilePage() {
           Публикации
         </button>
         {isOwnProfile && (
-            <button
-              className={`flex h-12 items-center gap-2 border-t ${
-                activeTab === 'saved'
-                  ? 'border-ig-text text-ig-text'
-                  : 'border-transparent'
-              }`}
-              type="button"
-              onClick={() => setActiveTab('saved')}
-            >
-              <Bookmark size={14} />
-              Сохранённые
-            </button>
+          <button
+            className={`flex h-12 items-center gap-2 border-t ${
+              activeTab === 'saved'
+                ? 'border-ig-text text-ig-text'
+                : 'border-transparent'
+            }`}
+            type="button"
+            onClick={() => setActiveTab('saved')}
+          >
+            <Bookmark size={14} />
+            Сохранённые
+          </button>
         )}
           <button
             className={`flex h-12 items-center gap-2 border-t ${
@@ -594,16 +618,52 @@ export function ProfilePage() {
               <ReelTile
                 key={reel.id}
                 reel={reel}
-                onClick={() => setSelectedReelIndex(index)}
+                onClick={() => {
+                  setSelectedReelSource('profile')
+                  setSelectedReelIndex(index)
+                }}
               />
             ))}
           </div>
         ) : (
-          <EmptyGrid icon="reels" title="Reels пока нет" text="Видео появятся здесь." />
+          <EmptyGrid
+            icon="reels"
+            title="Reels пока нет"
+            text="Видео появятся здесь."
+          />
         )
-      ) : visiblePosts.length > 0 ? (
+      ) : activeTab === 'saved' ? (
+        savedItems.length > 0 ? (
+          <div className="grid grid-cols-3 gap-1 md:gap-2">
+            {savedItems.map((item) =>
+              item.kind === 'post' ? (
+                <MediaTile
+                  key={`saved-post-${item.post.id}`}
+                  post={item.post}
+                  onClick={() => void handleOpenPost(item.post)}
+                />
+              ) : (
+                <ReelTile
+                  key={`saved-reel-${item.reel.id}`}
+                  reel={item.reel}
+                  onClick={() => {
+                    setSelectedReelSource('saved')
+                    setSelectedReelIndex(item.index)
+                  }}
+                />
+              ),
+            )}
+          </div>
+        ) : (
+          <EmptyGrid
+            icon="saved"
+            title="Сохранённых нет"
+            text="Сохранённые публикации и Reels будете видеть только вы."
+          />
+        )
+      ) : posts.length > 0 ? (
         <div className="grid grid-cols-3 gap-1 md:gap-2">
-          {visiblePosts.map((post) => (
+          {posts.map((post) => (
             <MediaTile
               key={post.id}
               post={post}
@@ -613,13 +673,9 @@ export function ProfilePage() {
         </div>
       ) : (
         <EmptyGrid
-          icon={activeTab === 'saved' ? 'saved' : 'posts'}
-          title={activeTab === 'saved' ? 'Сохранённых нет' : 'Публикаций пока нет'}
-          text={
-            activeTab === 'saved'
-              ? 'Сохранённые публикации будете видеть только вы.'
-              : 'Когда появятся публикации, они будут здесь.'
-          }
+          icon="posts"
+          title="Публикаций пока нет"
+          text="Когда появятся публикации, они будут здесь."
         />
       )}
 
@@ -660,7 +716,7 @@ export function ProfilePage() {
       {selectedReelIndex !== null && (
         <ReelViewerModal
           initialIndex={selectedReelIndex}
-          reels={reels}
+          reels={currentReels}
           onClose={() => setSelectedReelIndex(null)}
           onReelChange={handleReelChange}
         />

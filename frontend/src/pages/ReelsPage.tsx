@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import { getCommentLikeUsers, getReelLikeUsers } from '../api/likes'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { useReelsStore } from '../store/reelsStore'
-import type { Reel } from '../types/reels'
+import type { Comment, Reel } from '../types/reels'
 import { ReelCard } from '../components/ReelCard'
 import { ReelsCommentsSheet } from '../components/ReelsCommentsSheet'
+import { ViewersModal } from '../components/ViewersModal'
 
 function ReelsSkeleton() {
   return (
@@ -36,6 +38,9 @@ export function ReelsPage() {
   const [activeCommentsReel, setActiveCommentsReel] = useState<Reel | null>(
     null,
   )
+  const [likesModal, setLikesModal] = useState<
+    { kind: 'reel' | 'comment'; id: number; title: string } | null
+  >(null)
   const reels = useReelsStore((state) => state.reels)
   const isLoading = useReelsStore((state) => state.isLoading)
   const isLoadingMore = useReelsStore((state) => state.isLoadingMore)
@@ -46,9 +51,11 @@ export function ReelsPage() {
   const loadReels = useReelsStore((state) => state.loadReels)
   const loadMore = useReelsStore((state) => state.loadMore)
   const toggleLike = useReelsStore((state) => state.toggleLike)
+  const toggleSaved = useReelsStore((state) => state.toggleSaved)
   const markViewed = useReelsStore((state) => state.markViewed)
   const follow = useReelsStore((state) => state.follow)
   const loadComments = useReelsStore((state) => state.loadComments)
+  const toggleCommentLike = useReelsStore((state) => state.toggleCommentLike)
   const sendComment = useReelsStore((state) => state.sendComment)
 
   useEffect(() => {
@@ -93,6 +100,14 @@ export function ReelsPage() {
             onComment={openComments}
             onFollow={(username) => void follow(username)}
             onLike={(reelsId) => void toggleLike(reelsId)}
+            onOpenLikes={(reel) =>
+              setLikesModal({
+                kind: 'reel',
+                id: reel.id,
+                title: 'Лайки Reel',
+              })
+            }
+            onSave={(reelsId) => void toggleSaved(reelsId)}
             onViewed={(reelsId, watchedPercent) =>
               void markViewed(reelsId, watchedPercent)
             }
@@ -110,7 +125,29 @@ export function ReelsPage() {
           isSending={commentsState?.isSending ?? false}
           reel={activeCommentsReel}
           onClose={() => setActiveCommentsReel(null)}
+          onLikeComment={(comment: Comment) =>
+            toggleCommentLike(activeCommentsReel.id, comment.id)
+          }
+          onOpenCommentLikes={(comment: Comment) =>
+            setLikesModal({
+              kind: 'comment',
+              id: comment.id,
+              title: 'Лайки комментария',
+            })
+          }
           onSend={(text) => sendComment(activeCommentsReel.id, text)}
+        />
+      )}
+      {likesModal && (
+        <ViewersModal
+          title={likesModal.title}
+          viewerKey={`${likesModal.kind}-${likesModal.id}`}
+          loadViewers={() =>
+            likesModal.kind === 'reel'
+              ? getReelLikeUsers(likesModal.id)
+              : getCommentLikeUsers(likesModal.id)
+          }
+          onClose={() => setLikesModal(null)}
         />
       )}
     </main>

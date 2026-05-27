@@ -15,6 +15,7 @@ import {
   searchProfiles,
   sendChatMessage,
   sendGroupMessage,
+  uploadGroupAvatar,
 } from '../api/messages'
 import type {
   ActiveConversation,
@@ -51,9 +52,10 @@ interface MessagesState {
   searchUsers: (query: string) => Promise<void>
   startChat: (username: string) => Promise<Chat | null>
   createGroup: (
-    payload: { name: string; avatarUrl?: string | null; memberUsernames?: string[] },
+    payload: { name: string; avatarFile?: File | null; memberUsernames?: string[] },
   ) => Promise<Group | null>
   upsertGroup: (group: Group) => void
+  removeChat: (chatId: number) => void
   removeGroup: (groupId: number) => void
   setActive: (active: ActiveConversation | null) => Promise<void>
   loadMessages: (active: ActiveConversation) => Promise<void>
@@ -195,13 +197,17 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     }
   },
 
-  createGroup: async ({ name, avatarUrl = null, memberUsernames = [] }) => {
+  createGroup: async ({ name, avatarFile = null, memberUsernames = [] }) => {
     try {
       const { group } = await createGroupRequest({
         name,
-        avatar_url: avatarUrl,
       })
       let nextGroup = group
+
+      if (avatarFile) {
+        const response = await uploadGroupAvatar(nextGroup.id, avatarFile)
+        nextGroup = response.group
+      }
 
       for (const username of memberUsernames) {
         const response = await addGroupMember(nextGroup.id, username)
@@ -231,6 +237,23 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         ...state.groups.filter((item) => item.id !== group.id),
       ]),
     }))
+  },
+
+  removeChat: (chatId) => {
+    set((state) => {
+      const messagesKey = keyFor({ kind: 'chat', id: chatId })
+      const messagesByKey = { ...state.messagesByKey }
+      delete messagesByKey[messagesKey]
+
+      return {
+        chats: state.chats.filter((chat) => chat.id !== chatId),
+        active:
+          state.active?.kind === 'chat' && state.active.id === chatId
+            ? null
+            : state.active,
+        messagesByKey,
+      }
+    })
   },
 
   removeGroup: (groupId) => {
