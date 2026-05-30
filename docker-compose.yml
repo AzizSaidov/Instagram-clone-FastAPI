@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: .
+    container_name: insta-backend
+    restart: always
+    ports:
+      - "8003:8000"
+    env_file:
+      - .env
+
+  frontend:
+    image: nginx:alpine
+    container_name: insta-frontend
+    restart: always
+    ports:
+      - "3001:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
